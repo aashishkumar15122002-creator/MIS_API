@@ -731,6 +731,8 @@ function loginPage({ config }) {
               <button type="button" data-scroll-target="groupsMain"><span class="nav-icon">☷</span><span class="nav-text">Groups</span></button>
               <button type="button" data-scroll-target="history"><span class="nav-icon">↻</span><span class="nav-text">Logs</span></button>
               <button type="button" data-scroll-target="recentMain"><span class="nav-icon">◷</span><span class="nav-text">Recent logs</span></button>
+              <button type="button" data-scroll-target="sheetApiMain"><span class="nav-icon">⌘</span><span class="nav-text">Sheet API</span></button>
+              <button type="button" data-scroll-target="testMessageMain"><span class="nav-icon">✦</span><span class="nav-text">Test message</span></button>
             </nav>
             <section class="side-card side-subscription" id="sideSubscriptionCard" data-icon="◆">
               <div class="side-card-icon">◆</div>
@@ -745,33 +747,13 @@ function loginPage({ config }) {
                 <a class="side-link" href="mailto:${escapeHtml(payment.salesEmail)}">Upgrade / support</a>
               </div>
             </section>
-            <section class="side-card" id="sideGroupsCard">
-              <div class="side-card-icon">☷</div>
-              <div class="side-reveal">
-                <div class="side-card-head">
-                  <div>
-                    <span class="side-label">WhatsApp Groups</span>
-                    <strong id="sideGroupCount">0 groups</strong>
-                  </div>
-                  <button class="mini-button" type="button" id="refreshGroupsBtn">Refresh</button>
-                </div>
-                <p class="side-muted" id="groupsState">Connect WhatsApp to load groups.</p>
-                <div class="group-list" id="groupsList"></div>
-              </div>
-            </section>
-            <section class="side-card">
-              <div class="side-card-icon">↻</div>
-              <div class="side-reveal">
-                <span class="side-label">Recent history</span>
-                <strong id="sideLogCount">0 messages</strong>
-                <div class="side-log-list" id="sideRecentLogs"></div>
-              </div>
-            </section>
             <section class="side-card side-tip">
               <div class="side-card-icon">✦</div>
               <div class="side-reveal">
-                <span class="side-label">Send target</span>
-                <p>Use a phone number like <code>919876543210</code> or copy a group id ending with <code>@g.us</code>.</p>
+                <span class="side-label">Quick test</span>
+                <strong>Send test message</strong>
+                <p>Try one message from the dashboard before using Sheets.</p>
+                <button class="side-link" type="button" data-scroll-target="testMessageMain">Open test</button>
               </div>
             </section>
           </aside>
@@ -807,7 +789,7 @@ function loginPage({ config }) {
           <section id="groupsMain" class="main-card dashboard-panel hidden">
               <div class="panel-head">
                 <div><h2>WhatsApp Groups</h2><p>Copy group IDs and use them as the API or sheet recipient.</p></div>
-                <span class="pill" id="mainGroupCount">0 groups</span>
+                <div class="actions"><span class="pill" id="mainGroupCount">0 groups</span><button class="secondary" type="button" id="refreshGroupsBtn">Refresh</button></div>
               </div>
               <div class="panel-body">
                 <p class="small" id="mainGroupsState">Connect WhatsApp to load groups.</p>
@@ -823,9 +805,32 @@ function loginPage({ config }) {
                 <div class="main-recent-list" id="mainRecentLogs"></div>
               </div>
             </section>
+            <section id="sheetApiMain" class="main-card dashboard-panel hidden">
+              <div class="panel-head">
+                <div><h2>Sheet API Code</h2><p>Copy this into Google Apps Script as <code>WhatsApp.gs</code>.</p></div>
+                <button class="secondary" type="button" id="copySheetApiBtn">Copy code</button>
+              </div>
+              <div class="panel-body">
+                <textarea class="sheet-code-box" id="sheetApiCode" readonly></textarea>
+              </div>
+            </section>
+            <section id="testMessageMain" class="main-card dashboard-panel hidden">
+              <div class="panel-head">
+                <div><h2>Test Message</h2><p>Send one test message to a phone number or group ID.</p></div>
+                <span class="pill queued" id="testMessageState">Ready</span>
+              </div>
+              <div class="panel-body">
+                <div class="test-message-grid">
+                  <label>To / Group ID<input id="testMessageTo" placeholder="91876543210 or 1203630xxxxx@g.us"></label>
+                  <label>Message<input id="testMessageText" placeholder="Hello from MIS_api"></label>
+                  <button id="sendTestMessageBtn" type="button">Send test</button>
+                </div>
+                <p class="small" id="testMessageResult"></p>
+              </div>
+            </section>
           <div class="dash-grid dashboard-panel hidden" id="history">
             <section>
-              <div class="panel-head"><h2>Message Queue</h2><span class="pill queued" id="queueLabel">0 queued</span></div>
+              <div class="panel-head"><h2>Current Queue</h2><span class="pill queued" id="queueLabel">0 queued</span></div>
               <div class="panel-body">
                 <table>
                   <thead><tr><th>Status</th><th>To</th><th>Message</th><th>Time</th></tr></thead>
@@ -834,7 +839,7 @@ function loginPage({ config }) {
               </div>
             </section>
             <section>
-              <div class="panel-head"><h2>Message Activity</h2><span class="pill" id="logLabel">0 logs</span></div>
+              <div class="panel-head"><h2>Message Logs</h2><span class="pill" id="logLabel">0 logs</span></div>
               <div class="panel-body">
                 <table>
                   <thead><tr><th>Status</th><th>To</th><th>Message</th><th>Time</th></tr></thead>
@@ -893,7 +898,7 @@ function loginPage({ config }) {
       let sessionToken = '';
       localStorage.removeItem('mis_api_session');
       restoreCustomerSession();
-      const dashboardPanelTargets = new Set(['overview', 'phoneCards', 'groupsMain', 'history', 'recentMain']);
+      const dashboardPanelTargets = new Set(['overview', 'phoneCards', 'groupsMain', 'history', 'recentMain', 'sheetApiMain', 'testMessageMain']);
       document.getElementById('loginForm').addEventListener('submit', async event => {
         event.preventDefault();
         await login();
@@ -907,6 +912,8 @@ function loginPage({ config }) {
       document.getElementById('customerRefreshBtn').addEventListener('click', loadDashboard);
       document.getElementById('saveWebhookBtn').addEventListener('click', saveWebhook);
       document.getElementById('refreshGroupsBtn').addEventListener('click', loadGroupsPanel);
+      document.getElementById('copySheetApiBtn').addEventListener('click', copySheetApiCode);
+      document.getElementById('sendTestMessageBtn').addEventListener('click', sendTestMessage);
       document.getElementById('topLogoutBtn').addEventListener('click', logout);
       document.getElementById('adminRefreshBtn').addEventListener('click', loadAdminDashboard);
       document.getElementById('adminCreateBtn').addEventListener('click', createAdminCustomer);
@@ -1026,6 +1033,9 @@ function loginPage({ config }) {
         if (targetId === 'groupsMain') {
           loadGroupsPanel();
         }
+        if (targetId === 'sheetApiMain') {
+          refreshSheetApiPanel();
+        }
         if (options.scroll === false) {
           return;
         }
@@ -1080,6 +1090,7 @@ function loginPage({ config }) {
           ? me.phones.map(phoneCard).join('')
           : '<div class="empty-state"><strong>Preparing WhatsApp number</strong><span>Refresh once. Your WhatsApp card is created automatically.</span></div>';
         refreshScriptBoxes();
+        refreshSheetApiPanel();
         hydratePhoneCards(me.phones || []);
         document.getElementById('queueRows').innerHTML = activeQueueRows.length
           ? activeQueueRows.map(row).join('')
@@ -1100,15 +1111,10 @@ function loginPage({ config }) {
       function renderSidePanel(customer, phones, queueRows, logRows) {
         const phoneText = phones.length + ' WhatsApp phone' + (phones.length === 1 ? '' : 's');
         const failedRows = logRows.filter(item => item.status === 'failed');
-        const recentRows = logRows.slice(0, 6);
         document.getElementById('sideCustomerName').textContent = customer.name || 'Workspace';
         document.getElementById('sideCustomerMeta').textContent = phoneText + ' • ' + queueRows.length + ' queued';
         document.getElementById('sideSubscriptionStatus').textContent = customerStatusLabel(customer);
         document.getElementById('sideTrialText').textContent = subscriptionSummary(customer);
-        document.getElementById('sideLogCount').textContent = logRows.length + ' message' + (logRows.length === 1 ? '' : 's');
-        document.getElementById('sideRecentLogs').innerHTML = recentRows.length
-          ? recentRows.map(sideLogItem).join('')
-          : '<div class="side-empty">No message history yet.</div>';
         document.getElementById('sideSubscriptionCard').className = 'side-card side-subscription ' + customerStatusClass(customer);
         if (failedRows.length) {
           document.getElementById('sideCustomerMeta').textContent += ' • ' + failedRows.length + ' failed';
@@ -1132,8 +1138,8 @@ function loginPage({ config }) {
           button.disabled = true;
           button.textContent = 'Loading';
         }
-        document.getElementById('groupsState').textContent = 'Reading groups from connected WhatsApp...';
-        document.getElementById('groupsList').innerHTML = '<div class="side-empty">Loading groups...</div>';
+        document.getElementById('mainGroupsState').textContent = 'Reading groups from connected WhatsApp...';
+        document.getElementById('mainGroupsList').innerHTML = '<div class="empty-state"><strong>Loading groups</strong><span>Please wait while MIS_api reads your WhatsApp groups.</span></div>';
 
         try {
           const data = await fetchJson('/v1/customer/groups');
@@ -1150,13 +1156,6 @@ function loginPage({ config }) {
 
       function renderGroups(data) {
         const groups = data.groups || [];
-        document.getElementById('sideGroupCount').textContent = groups.length + ' group' + (groups.length === 1 ? '' : 's');
-        document.getElementById('groupsState').textContent = groups.length
-          ? 'Copy a group id and use it as the "to" value in your API or sheet.'
-          : (data.error || 'No groups found yet. Make sure WhatsApp is connected.');
-        document.getElementById('groupsList').innerHTML = groups.length
-          ? groups.slice(0, 14).map(groupItem).join('')
-          : '<div class="side-empty">No WhatsApp groups available.</div>';
         document.getElementById('mainGroupCount').textContent = groups.length + ' group' + (groups.length === 1 ? '' : 's');
         document.getElementById('mainGroupsState').textContent = groups.length
           ? 'Use these group IDs in column A of your Sheet or in the API "to" field.'
@@ -1164,32 +1163,6 @@ function loginPage({ config }) {
         document.getElementById('mainGroupsList').innerHTML = groups.length
           ? groups.map(mainGroupItem).join('')
           : '<div class="empty-state"><strong>No groups loaded</strong><span>Connect WhatsApp, then click Refresh in the sidebar groups card.</span></div>';
-      }
-
-      function groupItem(group) {
-        const meta = [
-          group.participants ? group.participants + ' members' : '',
-          group.announce ? 'admin-only' : '',
-          group.restrict ? 'restricted' : ''
-        ].filter(Boolean).join(' • ');
-        return '<div class="group-item">' +
-          '<div><strong>' + escapeHtml(group.subject || 'Unnamed group') + '</strong>' +
-          '<code>' + escapeHtml(group.id) + '</code>' +
-          '<span>' + escapeHtml(meta || 'WhatsApp group') + '</span></div>' +
-          '<button class="mini-button" type="button" data-copy-group="' + escapeHtml(group.id) + '">Copy</button>' +
-          '</div>';
-      }
-
-      function sideLogItem(item) {
-        const content = item.message || item.error || item.file?.filename || 'Message';
-        const recipient = item.direction === 'inbound' ? (item.from || '-') : (item.to || '-');
-        const status = item.status || '';
-        return '<div class="side-log-item">' +
-          '<i class="side-status ' + escapeHtml(status) + '"></i>' +
-          '<div><strong>' + escapeHtml(statusLabel(status)) + ' • ' + escapeHtml(recipient) + '</strong>' +
-          '<span title="' + escapeHtml(content) + '">' + escapeHtml(content) + '</span>' +
-          '<small>' + escapeHtml(formatDate(item.updatedAt || item.createdAt)) + '</small></div>' +
-          '</div>';
       }
 
       function mainGroupItem(group) {
@@ -1224,6 +1197,75 @@ function loginPage({ config }) {
           '<div><strong>' + escapeHtml(recipient) + '</strong><p>' + escapeHtml(content) + '</p></div>' +
           '<time>' + escapeHtml(formatDate(item.updatedAt || item.createdAt)) + '</time>' +
           '</div>';
+      }
+
+      function refreshSheetApiPanel() {
+        const firstPhone = document.querySelector('[data-whatsapp-script]');
+        const codeBox = document.getElementById('sheetApiCode');
+        if (!codeBox) {
+          return;
+        }
+        codeBox.value = firstPhone
+          ? whatsappGsCode(firstPhone.getAttribute('data-whatsapp-script'), customerApiKey || 'CUSTOMER_API_KEY')
+          : whatsappGsCode('PHONE_ID', customerApiKey || 'CUSTOMER_API_KEY');
+      }
+
+      async function copySheetApiCode() {
+        refreshSheetApiPanel();
+        await copyText(document.getElementById('sheetApiCode').value);
+        const button = document.getElementById('copySheetApiBtn');
+        button.textContent = 'Copied';
+        setTimeout(() => {
+          button.textContent = 'Copy code';
+        }, 1200);
+      }
+
+      async function sendTestMessage() {
+        const state = document.getElementById('testMessageState');
+        const resultBox = document.getElementById('testMessageResult');
+        const phone = document.querySelector('[data-whatsapp-script]');
+        const to = document.getElementById('testMessageTo').value.trim();
+        const message = document.getElementById('testMessageText').value.trim() || 'Hello from MIS_api';
+        if (!phone) {
+          resultBox.textContent = 'No WhatsApp phone found. Connect WhatsApp first.';
+          resultBox.className = 'small error-text';
+          return;
+        }
+        if (!to) {
+          resultBox.textContent = 'Enter a phone number or group ID.';
+          resultBox.className = 'small error-text';
+          return;
+        }
+
+        state.textContent = 'Sending';
+        resultBox.textContent = '';
+        try {
+          const response = await fetch('/v1/messages/send', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              authorization: 'Bearer ' + customerApiKey
+            },
+            body: JSON.stringify({
+              phoneId: phone.getAttribute('data-whatsapp-script'),
+              to,
+              message
+            })
+          });
+          const data = await response.json();
+          state.textContent = data.ok ? 'Queued' : 'Failed';
+          resultBox.textContent = data.ok
+            ? 'Test message queued. Queue ID: ' + (data.queueId || '-')
+            : (data.error || 'Could not queue test message.');
+          resultBox.className = 'small ' + (data.ok ? 'success-text' : 'error-text');
+          if (data.ok) {
+            setTimeout(loadDashboard, 700);
+          }
+        } catch (err) {
+          state.textContent = 'Failed';
+          resultBox.textContent = err.message || 'Could not send test message.';
+          resultBox.className = 'small error-text';
+        }
       }
 
       function phoneCard(phone) {
@@ -3707,6 +3749,25 @@ function premiumSaaSStyles() {
         font-size: 12px;
         white-space: nowrap;
       }
+      .sheet-code-box {
+        background: #0b1220;
+        border: 0;
+        border-radius: 16px;
+        color: #dbeafe;
+        font-family: var(--mono);
+        font-size: 13px;
+        line-height: 1.65;
+        min-height: 520px;
+        padding: 18px;
+        resize: vertical;
+        width: 100%;
+      }
+      .test-message-grid {
+        align-items: end;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: minmax(220px, .9fr) minmax(260px, 1.2fr) auto;
+      }
       .customer-dashboard {
         gap: 18px;
         grid-template-columns: 78px minmax(0, 1fr);
@@ -3796,9 +3857,9 @@ function premiumSaaSStyles() {
         align-items: center;
         display: flex;
         gap: 11px;
-        min-height: 46px;
+        min-height: 54px;
         overflow: hidden;
-        padding: 0;
+        padding: 6px;
       }
       .side-nav button:hover {
         background: linear-gradient(135deg, #ecfdf5, #eff6ff);
@@ -3825,6 +3886,8 @@ function premiumSaaSStyles() {
       .side-panel:not(:hover):not(:focus-within) .side-profile {
         grid-template-columns: 42px;
         justify-content: center;
+        min-height: 54px;
+        padding: 6px;
       }
       .side-panel:not(:hover):not(:focus-within) .side-nav button {
         justify-content: center;
