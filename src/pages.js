@@ -762,6 +762,14 @@ function loginPage({ config }) {
               <div class="actions"><span class="pill" id="customerStatus">trial</span><button class="secondary" id="customerRefreshBtn">Refresh</button></div>
             </div>
             <div class="panel-body">
+              <div class="overview-user-card">
+                <div class="overview-avatar">AR</div>
+                <div>
+                  <span class="overview-label">Signed in workspace</span>
+                  <strong id="overviewUserName">Workspace</strong>
+                  <p id="overviewUserMeta">Loading account details...</p>
+                </div>
+              </div>
               <div class="trial-banner" id="trialBanner"></div>
               <p class="dashboard-notice" id="dashboardNotice"></p>
               <div class="summary">
@@ -1082,6 +1090,8 @@ function loginPage({ config }) {
         const logRows = logs.messages || [];
         const failedRows = logRows.filter(item => item.status === 'failed');
         document.getElementById('customerName').textContent = me.customer.name + ' workspace';
+        document.getElementById('overviewUserName').textContent = me.customer.name || 'Workspace';
+        document.getElementById('overviewUserMeta').textContent = (me.customer.username || 'user') + ' • ' + customerStatusLabel(me.customer);
         document.getElementById('customerStatus').textContent = customerStatusLabel(me.customer);
         document.getElementById('customerStatus').className = 'pill ' + customerStatusClass(me.customer);
         document.getElementById('trialBanner').innerHTML = trialBanner(me.customer);
@@ -1121,13 +1131,8 @@ function loginPage({ config }) {
       }
 
       function renderSidePanel(customer, phones, queueRows, logRows) {
-        const phoneText = phones.length + ' WhatsApp phone' + (phones.length === 1 ? '' : 's');
-        const failedRows = logRows.filter(item => item.status === 'failed');
-        document.getElementById('sideCustomerName').textContent = customer.name || 'Workspace';
-        document.getElementById('sideCustomerMeta').textContent = phoneText + ' • ' + queueRows.length + ' queued';
-        if (failedRows.length) {
-          document.getElementById('sideCustomerMeta').textContent += ' • ' + failedRows.length + ' failed';
-        }
+        document.getElementById('sideCustomerName').textContent = 'Menu';
+        document.getElementById('sideCustomerMeta').textContent = 'Dashboard navigation';
       }
 
       function subscriptionSummary(customer) {
@@ -1281,8 +1286,7 @@ function loginPage({ config }) {
           '<code>' + escapeHtml(phone.id) + '</code></div><div class="phone-actions"><span class="pill ' + escapeHtml(severity) + '" id="phoneStatus-' + escapeHtml(phone.id) + '">' + escapeHtml(label) + '</span>' +
           qrAction + disconnectAction + '</div></div>' +
           '<div class="phone-qr" id="phoneQr-' + escapeHtml(phone.id) + '"><div id="phoneQrImage-' + escapeHtml(phone.id) + '"></div><div><strong id="phoneQrTitle-' + escapeHtml(phone.id) + '">Waiting for QR</strong><p class="small" id="phoneQrText-' + escapeHtml(phone.id) + '">Open WhatsApp Linked Devices and scan this QR when it appears.</p></div></div>' +
-          '<div class="script-box"><div class="panel-head"><h2>WhatsApp.gs</h2><span class="small">Copy from Sheet API tab</span></div>' +
-          '<textarea readonly data-whatsapp-script="' + escapeHtml(phone.id) + '"></textarea></div>' +
+          '<span class="hidden" data-whatsapp-script="' + escapeHtml(phone.id) + '"></span>' +
           '</div>';
       }
 
@@ -4467,6 +4471,99 @@ function premiumSaaSStyles() {
         display: block;
         font-size: 13px;
         margin: 4px 0 8px;
+      }
+      .overview-user-card {
+        align-items: center;
+        background:
+          radial-gradient(circle at top right, rgba(34, 197, 94, .12), transparent 260px),
+          linear-gradient(135deg, #f8fafc, #ffffff);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        display: grid;
+        gap: 14px;
+        grid-template-columns: auto 1fr;
+        margin-bottom: 14px;
+        padding: 14px 16px;
+      }
+      .overview-avatar {
+        align-items: center;
+        background: linear-gradient(135deg, #14b8a6, #22c55e);
+        border-radius: 16px;
+        box-shadow: 0 12px 28px rgba(34, 197, 94, .18);
+        color: #052e16;
+        display: grid;
+        font-weight: 950;
+        height: 48px;
+        place-items: center;
+        width: 48px;
+      }
+      .overview-label {
+        color: var(--text-muted);
+        display: block;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: .08em;
+        margin-bottom: 3px;
+        text-transform: uppercase;
+      }
+      .overview-user-card strong {
+        color: var(--text);
+        display: block;
+        font-size: 18px;
+      }
+      .overview-user-card p {
+        color: var(--text-muted);
+        font-size: 13px;
+        margin-top: 3px;
+      }
+      .is-customer .summary {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .is-customer .summary-card {
+        min-height: 88px;
+        padding: 14px 16px;
+      }
+      .is-customer .summary-card strong {
+        font-size: 24px;
+      }
+      .is-customer .side-panel {
+        align-content: start;
+      }
+      .is-customer .side-profile {
+        align-items: center;
+        border-radius: 18px;
+        grid-template-columns: 42px 1fr;
+        height: 54px !important;
+        min-height: 54px !important;
+        overflow: hidden;
+        padding: 6px !important;
+      }
+      .is-customer .side-avatar {
+        border-radius: 14px;
+        height: 42px !important;
+        width: 42px !important;
+      }
+      .is-customer .side-nav button {
+        align-items: center;
+        min-height: 54px !important;
+        padding: 6px !important;
+      }
+      .is-customer .nav-icon {
+        height: 42px !important;
+        width: 42px !important;
+      }
+      .is-customer .side-panel:not(:hover):not(:focus-within) .side-profile {
+        grid-template-columns: 42px !important;
+        height: 54px !important;
+        min-height: 54px !important;
+      }
+      .is-customer .side-panel:not(:hover):not(:focus-within) .side-reveal {
+        display: none !important;
+      }
+      .is-customer .phone-card .script-box {
+        display: none !important;
       }
       .phone-card code {
         background: var(--surface-muted);
