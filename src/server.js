@@ -90,7 +90,10 @@ const server = http.createServer(async (request, response) => {
           adminSessionToken: adminSession.token,
           expiresAt: adminSession.expiresAt
         }, {
-          'set-cookie': sessionCookie('mis_admin_session', adminSession.token, 12 * 60 * 60)
+          'set-cookie': [
+            sessionCookie('mis_admin_session', adminSession.token, 12 * 60 * 60),
+            clearCookie('mis_customer_session')
+          ]
         });
       }
 
@@ -110,7 +113,10 @@ const server = http.createServer(async (request, response) => {
         expiresAt: session.expiresAt,
         customer: publicCustomer(customer)
       }, {
-        'set-cookie': sessionCookie('mis_customer_session', token, 30 * 24 * 60 * 60)
+        'set-cookie': [
+          sessionCookie('mis_customer_session', token, 30 * 24 * 60 * 60),
+          clearCookie('mis_admin_session')
+        ]
       });
     }
 
@@ -144,7 +150,10 @@ const server = http.createServer(async (request, response) => {
         customer: publicCustomer(result.customer),
         phone
       }, {
-        'set-cookie': sessionCookie('mis_customer_session', token, 30 * 24 * 60 * 60)
+        'set-cookie': [
+          sessionCookie('mis_customer_session', token, 30 * 24 * 60 * 60),
+          clearCookie('mis_admin_session')
+        ]
       });
     }
 
@@ -313,6 +322,33 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, {
         ok: true,
         customers: listCustomerSummaries()
+      });
+    }
+
+    const adminCustomerStatusMatch = url.pathname.match(/^\/v1\/admin\/customers\/([^/]+)\/status$/);
+    if (request.method === 'POST' && adminCustomerStatusMatch) {
+      requireAdminSession(request);
+      const body = await readJson(request);
+      const disabled = Boolean(body.disabled);
+      const patch = {
+        status: disabled ? 'blocked' : 'trialing'
+      };
+      const subscriptionStatus = String(body.subscriptionStatus || '').trim().toLowerCase();
+      if (subscriptionStatus) {
+        if (!['trialing', 'active'].includes(subscriptionStatus)) {
+          throw error(400, 'Invalid subscription status.');
+        }
+        patch.subscriptionStatus = subscriptionStatus;
+      }
+      const customer = updateCustomer(adminCustomerStatusMatch[1], patch);
+
+      if (!customer) {
+        throw error(404, 'Customer not found.');
+      }
+
+      return sendJson(response, 200, {
+        ok: true,
+        customer: publicCustomer(customer)
       });
     }
 
@@ -640,6 +676,9 @@ function requirePhoneWithConnectToken(phoneId, token) {
 function getPhoneForStatus(request, url, phoneId) {
   const apiCustomer = findCustomerByApiKey(bearerToken(request));
   if (apiCustomer) {
+    if (!isCustomerAllowed(apiCustomer)) {
+      throw error(402, 'Trial expired or subscription inactive.');
+    }
     const phone = findPhone(phoneId);
     if (!phone || phone.customerId !== apiCustomer.id) {
       throw error(404, 'Phone not found.');
@@ -767,6 +806,11 @@ async function processQueue() {
     const phone = findPhone(item.phoneId);
     if (!phone) {
       throw new Error('Phone not found.');
+    }
+
+    const customer = findCustomerById(item.customerId);
+    if (!isCustomerAllowed(customer)) {
+      throw new Error('Trial expired or subscription inactive.');
     }
 
     const whatsappMessage = await sendMessage(phone, item.to, {

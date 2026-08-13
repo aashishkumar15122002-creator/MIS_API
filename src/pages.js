@@ -242,14 +242,25 @@ function adminPage({ config }) {
     <style>
       ${baseStyles()}
       ${consoleStyles()}
-      main { max-width: 980px; margin: 0 auto; padding: 26px 16px 44px; }
+      body { background: #f4f7fb; }
+      main { max-width: 1480px; margin: 0 auto; padding: 22px 18px 44px; }
+      header { background: #0f172a; border-radius: 18px; color: #fff; padding: 22px; }
+      header p { color: #cbd5e1; }
       .form-grid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
       .result-grid { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; margin-top: 14px; }
-      .secret-box { background: #f0f4f2; border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-wrap: anywhere; }
-      .admin-stack { display: grid; gap: 14px; }
+      .secret-box { background: #f8fafc; border: 1px solid #dbe4ee; border-radius: 12px; padding: 12px; overflow-wrap: anywhere; }
+      .admin-stack { display: grid; gap: 16px; }
+      section { border-radius: 18px; }
+      .admin-table-wrap { overflow-x: auto; }
       table { border-collapse: collapse; font-size: 13px; width: 100%; }
-      th, td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; vertical-align: top; }
+      th, td { border-bottom: 1px solid var(--line); padding: 12px 10px; text-align: left; vertical-align: top; }
       th { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+      .credential { background: #f8fafc; border: 1px solid #dbe4ee; border-radius: 10px; color: #0f172a; display: block; font-family: Consolas, monospace; max-width: 320px; overflow-wrap: anywhere; padding: 8px; }
+      .status-badge { border-radius: 999px; display: inline-block; font-size: 11px; font-weight: 900; padding: 6px 9px; text-transform: uppercase; }
+      .status-badge.enabled { background: #dcfce7; color: #166534; }
+      .status-badge.disabled { background: #fee2e2; color: #991b1b; }
+      button.danger { background: #dc2626; color: #fff; }
+      button.success { background: #16a34a; color: #fff; }
       label { color: var(--muted); display: grid; font-size: 12px; font-weight: 800; gap: 6px; text-transform: uppercase; }
       input { background: #fff; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); font: inherit; min-height: 42px; padding: 0 12px; width: 100%; }
       @media (max-width: 780px) { .form-grid, .result-grid { grid-template-columns: 1fr; } }
@@ -260,8 +271,8 @@ function adminPage({ config }) {
     <main>
       <header>
         <div>
-          <h1>MIS_api Admin</h1>
-          <p>Create a customer login, API key, phone ID, connect token, and QR link in one step.</p>
+          <h1>Admin Control Center</h1>
+          <p>Manage customers, credentials, API keys, trials, and account access.</p>
         </div>
         <div class="actions"><a class="button secondary" href="/Login_page">Website</a><button class="secondary" id="adminLogoutBtn">Logout</button></div>
       </header>
@@ -285,7 +296,7 @@ function adminPage({ config }) {
       </section>
       <section>
         <div class="panel-head">
-          <h2>All Users</h2>
+          <h2>User Credentials & Access</h2>
           <button class="secondary" id="refreshCustomersBtn">Refresh</button>
         </div>
         <div class="panel-body">
@@ -294,12 +305,13 @@ function adminPage({ config }) {
             <div class="summary-card"><span>Active Trials</span><strong id="activeTrials">0</strong></div>
             <div class="summary-card"><span>Queued</span><strong id="adminQueued">0</strong></div>
           </div>
-          <table>
+          <p class="small">Passwords are shown only when they were saved at account creation. Older hashed passwords cannot be recovered.</p>
+          <div class="admin-table-wrap"><table>
             <thead>
-              <tr><th>Company</th><th>Login</th><th>Trial Ends</th><th>Days Left</th><th>Phones</th><th>Queue</th><th>Logs</th></tr>
+              <tr><th>Status</th><th>User</th><th>Username</th><th>Password</th><th>API Key</th><th>Trial</th><th>Usage</th><th>Action</th></tr>
             </thead>
-            <tbody id="customerRows"><tr><td colspan="7" class="small">Loading...</td></tr></tbody>
-          </table>
+            <tbody id="customerRows"><tr><td colspan="8" class="small">Loading...</td></tr></tbody>
+          </table></div>
         </div>
       </section>
       </div>
@@ -317,6 +329,30 @@ function adminPage({ config }) {
         window.location.href = '/';
       });
       document.getElementById('refreshCustomersBtn')?.addEventListener('click', loadCustomers);
+      document.addEventListener('click', async event => {
+        const button = event.target.closest('[data-toggle-customer]');
+        if (!button) return;
+        const customerId = button.getAttribute('data-toggle-customer');
+        const disabled = button.getAttribute('data-disabled') === 'true';
+        const subscriptionStatus = button.getAttribute('data-subscription-status') || '';
+        button.disabled = true;
+        button.textContent = subscriptionStatus
+          ? 'Updating...'
+          : (disabled ? 'Enabling...' : 'Disabling...');
+        const response = await fetch('/v1/admin/customers/' + encodeURIComponent(customerId) + '/status', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-admin-session-token': adminToken
+          },
+          body: JSON.stringify(subscriptionStatus ? { disabled, subscriptionStatus } : { disabled: !disabled })
+        });
+        const data = await response.json();
+        if (!data.ok) {
+          alert(data.error || 'Could not update user.');
+        }
+        await loadCustomers();
+      });
       document.getElementById('createBtn')?.addEventListener('click', async () => {
         const payload = {
           name: document.getElementById('name').value.trim(),
@@ -355,7 +391,7 @@ function adminPage({ config }) {
         });
         const data = await response.json();
         if (!data.ok) {
-          document.getElementById('customerRows').innerHTML = '<tr><td colspan="7" class="small">' + escapeHtml(data.error || 'Admin login required.') + '</td></tr>';
+          document.getElementById('customerRows').innerHTML = '<tr><td colspan="8" class="small">' + escapeHtml(data.error || 'Admin login required.') + '</td></tr>';
           return;
         }
         const customers = data.customers || [];
@@ -364,18 +400,27 @@ function adminPage({ config }) {
         document.getElementById('adminQueued').textContent = customers.reduce((sum, customer) => sum + Number(customer.pendingQueueCount || 0), 0);
         document.getElementById('customerRows').innerHTML = customers.length
           ? customers.map(customerRow).join('')
-          : '<tr><td colspan="7" class="small">No customers yet.</td></tr>';
+          : '<tr><td colspan="8" class="small">No customers yet.</td></tr>';
       }
 
       function customerRow(customer) {
+        const disabled = customer.disabled || customer.status === 'blocked';
+        const password = customer.plainPassword || 'Not saved';
+        const actionText = disabled ? 'Enable user' : 'Disable user';
+        const actionClass = disabled ? 'success' : 'danger';
+        const paid = customer.subscriptionStatus === 'active';
+        const billingText = paid ? 'Mark trial' : 'Activate paid';
+        const billingStatus = paid ? 'trialing' : 'active';
         return '<tr>' +
-          '<td><strong>' + escapeHtml(customer.name) + '</strong><br><span class="small">' + escapeHtml(customer.subscriptionStatus) + '</span></td>' +
-          '<td>' + escapeHtml(customer.username || '-') + '</td>' +
-          '<td>' + escapeHtml(formatDate(customer.trialEndsAt)) + '</td>' +
-          '<td>' + daysLeft(customer.trialEndsAt) + '</td>' +
-          '<td>' + customer.phoneCount + '</td>' +
-          '<td>' + customer.pendingQueueCount + ' / ' + customer.queueCount + '</td>' +
-          '<td>' + customer.messageCount + '</td>' +
+          '<td><span class="status-badge ' + (disabled ? 'disabled' : 'enabled') + '">' + (disabled ? 'Disabled' : 'Enabled') + '</span></td>' +
+          '<td><strong>' + escapeHtml(customer.name) + '</strong><br><span class="small">' + escapeHtml(customer.id) + '</span></td>' +
+          '<td><code class="credential">' + escapeHtml(customer.username || '-') + '</code></td>' +
+          '<td><code class="credential">' + escapeHtml(password) + '</code></td>' +
+          '<td><code class="credential">' + escapeHtml(customer.apiKey || '-') + '</code></td>' +
+          '<td>' + escapeHtml(customer.subscriptionStatus || '-') + '<br>' + escapeHtml(formatDate(customer.trialEndsAt)) + '<br><span class="small">' + daysLeft(customer.trialEndsAt) + ' days left</span></td>' +
+          '<td><strong>' + customer.phoneCount + '</strong> phones<br><span class="small">' + customer.pendingQueueCount + ' active queue / ' + customer.messageCount + ' logs</span></td>' +
+          '<td><div class="actions" style="justify-content:flex-start;gap:6px;"><button class="' + actionClass + '" type="button" data-toggle-customer="' + escapeHtml(customer.id) + '" data-disabled="' + String(disabled) + '">' + actionText + '</button>' +
+          '<button class="secondary" type="button" data-toggle-customer="' + escapeHtml(customer.id) + '" data-disabled="' + String(disabled) + '" data-subscription-status="' + billingStatus + '">' + billingText + '</button></div></td>' +
           '</tr>';
       }
 
@@ -735,19 +780,6 @@ function loginPage({ config }) {
               <button type="button" data-scroll-target="sheetApiMain"><span class="nav-icon">⌘</span><span class="nav-text">Sheet API</span></button>
               <button type="button" data-scroll-target="testMessageMain"><span class="nav-icon">✦</span><span class="nav-text">Test message</span></button>
             </nav>
-            <section class="side-card side-subscription" id="sideSubscriptionCard" data-icon="◆">
-              <div class="side-card-icon">◆</div>
-              <div class="side-reveal">
-                <span class="side-label">Subscription</span>
-                <strong id="sideSubscriptionStatus">Free trial</strong>
-                <p id="sideTrialText">Loading plan details...</p>
-                <div class="side-price">
-                  <span>${escapeHtml(payment.planName)}</span>
-                  <b>${escapeHtml(payment.monthlyPrice)}</b>
-                </div>
-                <button class="side-link" type="button" data-scroll-target="subscriptionMain">View details</button>
-              </div>
-            </section>
           </aside>
           <div class="customer-stack">
           <section class="customer-hero dashboard-panel" id="overview">
@@ -960,10 +992,11 @@ function loginPage({ config }) {
         if (data.role === 'admin') {
           sessionStorage.setItem('mis_api_admin_session', data.adminSessionToken);
           document.getElementById('loginError').textContent = '';
-          await showAdminDashboard();
+          window.location.href = '/admin';
           return;
         }
         sessionToken = data.sessionToken;
+        sessionStorage.removeItem('mis_api_admin_session');
         document.getElementById('loginError').textContent = '';
         showCustomerShell();
         await loadDashboard();
@@ -985,6 +1018,7 @@ function loginPage({ config }) {
           return;
         }
         sessionToken = data.sessionToken;
+        sessionStorage.removeItem('mis_api_admin_session');
         document.getElementById('loginError').textContent = '';
         showCustomerShell();
         await loadDashboard();
@@ -1112,9 +1146,6 @@ function loginPage({ config }) {
         const failedRows = logRows.filter(item => item.status === 'failed');
         document.getElementById('sideCustomerName').textContent = customer.name || 'Workspace';
         document.getElementById('sideCustomerMeta').textContent = phoneText + ' • ' + queueRows.length + ' queued';
-        document.getElementById('sideSubscriptionStatus').textContent = customerStatusLabel(customer);
-        document.getElementById('sideTrialText').textContent = subscriptionSummary(customer);
-        document.getElementById('sideSubscriptionCard').className = 'side-card side-subscription ' + customerStatusClass(customer);
         if (failedRows.length) {
           document.getElementById('sideCustomerMeta').textContent += ' • ' + failedRows.length + ' failed';
         }
@@ -1307,13 +1338,14 @@ function loginPage({ config }) {
       async function restoreCustomerSession() {
         const me = await fetchJson('/v1/customer/me');
         if (me.ok) {
+          sessionStorage.removeItem('mis_api_admin_session');
           showCustomerShell();
           await loadDashboard();
           return;
         }
         const admin = await fetchJson('/v1/admin/customers');
         if (admin.ok) {
-          await showAdminDashboard();
+          window.location.href = '/admin';
         }
       }
 

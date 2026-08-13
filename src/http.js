@@ -1,6 +1,8 @@
 function sendJson(response, statusCode, payload, headers = {}) {
   response.writeHead(statusCode, {
     'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    pragma: 'no-cache',
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'GET,POST,OPTIONS',
     'access-control-allow-headers': 'content-type,authorization,x-session-token,x-admin-session-token',
@@ -12,6 +14,8 @@ function sendJson(response, statusCode, payload, headers = {}) {
 function sendHtml(response, statusCode, html, headers = {}) {
   response.writeHead(statusCode, {
     'content-type': 'text/html; charset=utf-8',
+    'cache-control': 'no-store',
+    pragma: 'no-cache',
     ...headers
   });
   response.end(html);
