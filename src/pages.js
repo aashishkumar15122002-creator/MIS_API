@@ -9,7 +9,8 @@ function homePage({ config }) {
       ${baseStyles()}
       .site-shell { max-width: 1180px; margin: 0 auto; padding: 22px 18px 52px; }
       .nav { align-items: center; display: flex; justify-content: space-between; margin-bottom: 28px; position: sticky; top: 0; z-index: 3; background: rgba(246, 247, 244, .94); border-bottom: 1px solid rgba(220, 227, 221, .72); padding: 10px 0; }
-      .brand { color: var(--ink); font-size: 22px; font-weight: 900; letter-spacing: 0; text-decoration: none; }
+      .brand { align-items: center; color: var(--ink); display: inline-flex; font-size: 22px; font-weight: 900; gap: 9px; letter-spacing: 0; text-decoration: none; }
+      .brand:before { align-items: center; background: linear-gradient(135deg, #0f8a78, #22c55e); border-radius: 10px; color: #052e16; content: "AR"; display: grid; font-size: 12px; font-weight: 950; height: 30px; place-items: center; width: 30px; }
       .nav-links { align-items: center; display: flex; gap: 16px; }
       .nav-links a { color: var(--muted); font-size: 14px; font-weight: 700; text-decoration: none; }
       .hero { align-items: center; display: grid; gap: 30px; grid-template-columns: 1.1fr .9fr; min-height: 560px; }
@@ -718,7 +719,7 @@ function loginPage({ config }) {
         <div id="dashboard" class="customer-dashboard hidden">
           <aside class="side-panel" aria-label="Customer tools">
             <div class="side-profile">
-              <div class="side-avatar">WA</div>
+              <div class="side-avatar">AR</div>
               <div class="side-reveal">
                 <strong id="sideCustomerName">Workspace</strong>
                 <span id="sideCustomerMeta">WhatsApp API console</span>
@@ -2900,10 +2901,16 @@ function premiumSaaSStyles() {
         gap: 9px;
       }
       .portal-title h1:before {
+        align-items: center;
         background: linear-gradient(135deg, #0f8a78, #22c55e);
         border-radius: 9px;
-        content: "";
+        color: #052e16;
+        content: "AR";
+        display: grid;
+        font-size: 11px;
+        font-weight: 950;
         height: 28px;
+        place-items: center;
         width: 28px;
       }
       .portal-title h1:after {
@@ -3839,7 +3846,16 @@ function premiumSaaSStyles() {
       }
       .is-customer main {
         max-width: none;
-        padding: 14px 20px 48px 104px;
+        margin: 0;
+        padding: 10px 12px 34px 94px;
+        width: 100%;
+      }
+      .is-customer .login-grid,
+      .is-customer .portal-top,
+      .is-customer .customer-stack,
+      .is-customer .customer-dashboard {
+        max-width: none;
+        width: 100%;
       }
       .is-customer .portal-top {
         margin: 0 0 18px;
