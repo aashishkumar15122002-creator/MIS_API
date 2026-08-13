@@ -673,7 +673,7 @@ function loginPage({ config }) {
       </div>
       <div class="login-grid">
         <section class="login-card" id="loginCard">
-          <div class="panel-head"><div><h2 id="authTitle">Welcome to MIS_api</h2><p id="authSubtitle">Sign in to manage your WhatsApp API workspace.</p></div><span class="pill">Secure</span></div>
+          <div class="panel-head"><div><h2 id="authTitle">Sign in</h2><p id="authSubtitle">Access your WhatsApp API workspace.</p></div><span class="pill">Secure</span></div>
           <div class="panel-body">
             <div class="auth-tabs">
               <button class="active" id="showLoginBtn" type="button">Sign in</button>
@@ -697,9 +697,9 @@ function loginPage({ config }) {
         <div id="publicDetails" class="public-stack">
           <section class="public-hero">
             <div>
-              <div class="product-kicker">WhatsApp API Infrastructure</div>
-              <h2>WhatsApp messaging infrastructure, without the operational headache.</h2>
-              <p>Connect WhatsApp numbers, manage QR sessions, queue outbound messages and monitor delivery activity from one developer-friendly workspace.</p>
+              <div class="product-kicker">MIS_api WhatsApp Console</div>
+              <h2>Let's Get Started</h2>
+              <p>Launch a premium WhatsApp API workspace with QR linking, queued sending, clear logs, group IDs and Sheet-ready code in one secure dashboard.</p>
               <div class="public-actions">
                 <button type="button" data-scroll-target="api">View API endpoint</button>
                 <button class="secondary" type="button" data-scroll-target="pricing">View plans</button>
@@ -961,10 +961,10 @@ function loginPage({ config }) {
 
       function setAuthMode(mode) {
         const signup = mode === 'signup';
-        document.getElementById('authTitle').textContent = 'Welcome to MIS_api';
+        document.getElementById('authTitle').textContent = signup ? 'Sign up' : 'Sign in';
         document.getElementById('authSubtitle').textContent = signup
           ? 'Create your workspace and start your free trial.'
-          : 'Sign in to manage your WhatsApp API workspace.';
+          : 'Access your WhatsApp API workspace.';
         document.getElementById('loginForm').classList.toggle('hidden', signup);
         document.getElementById('signupForm').classList.toggle('hidden', !signup);
         document.getElementById('showLoginBtn').className = signup ? 'secondary' : 'active';
@@ -4062,6 +4062,313 @@ function premiumSaaSStyles() {
       }
       .phone-qr.connected p {
         color: rgba(255,255,255,.72);
+      }
+      body:not(.is-authenticated) {
+        background:
+          radial-gradient(circle at 12% 10%, rgba(38, 180, 95, .28), transparent 250px),
+          radial-gradient(circle at 88% 18%, rgba(9, 116, 74, .26), transparent 290px),
+          linear-gradient(135deg, #03110b 0%, #071b12 45%, #0f321f 100%);
+        min-height: 100vh;
+      }
+      body:not(.is-authenticated) main {
+        max-width: 1280px;
+        padding: 22px 18px 56px;
+      }
+      body:not(.is-authenticated) .portal-top {
+        display: none;
+      }
+      body:not(.is-authenticated) .portal-title h1 {
+        color: #f0fdf4;
+      }
+      body:not(.is-authenticated) .ghost,
+      body:not(.is-authenticated) .ghost-link {
+        color: rgba(240, 253, 244, .74);
+      }
+      body:not(.is-authenticated) .ghost:hover,
+      body:not(.is-authenticated) .ghost-link:hover {
+        background: rgba(255, 255, 255, .08);
+        color: #fff;
+      }
+      body:not(.is-authenticated) .login-grid {
+        background:
+          radial-gradient(ellipse at 8% 8%, rgba(60, 255, 140, .34), transparent 180px),
+          radial-gradient(ellipse at 20% 40%, rgba(18, 95, 43, .72), transparent 210px),
+          radial-gradient(ellipse at 78% 12%, rgba(24, 120, 70, .46), transparent 240px),
+          linear-gradient(135deg, rgba(9, 36, 23, .98), rgba(1, 9, 6, .98));
+        border: 1px solid rgba(145, 255, 190, .24);
+        border-radius: 34px;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, .08),
+          0 42px 120px rgba(0, 0, 0, .48);
+        display: grid;
+        gap: 0;
+        grid-template-columns: minmax(0, 1.08fr) minmax(420px, .92fr);
+        overflow: hidden;
+        padding: 24px;
+        position: relative;
+      }
+      body:not(.is-authenticated) .login-grid:before,
+      body:not(.is-authenticated) .login-grid:after {
+        content: "";
+        filter: blur(1px);
+        opacity: .62;
+        pointer-events: none;
+        position: absolute;
+        z-index: 0;
+      }
+      body:not(.is-authenticated) .login-grid:before {
+        background:
+          radial-gradient(ellipse at 34% 30%, rgba(112, 255, 173, .38), transparent 32%),
+          radial-gradient(ellipse at 68% 28%, rgba(28, 142, 76, .34), transparent 34%);
+        border-radius: 999px;
+        height: 250px;
+        left: 16px;
+        top: -80px;
+        transform: rotate(-10deg);
+        width: 560px;
+      }
+      body:not(.is-authenticated) .login-grid:after {
+        background:
+          radial-gradient(ellipse at center, rgba(31, 185, 103, .34), transparent 35%),
+          radial-gradient(ellipse at 70% 72%, rgba(4, 54, 31, .68), transparent 42%);
+        border-radius: 999px;
+        bottom: -90px;
+        height: 260px;
+        right: -50px;
+        transform: rotate(18deg);
+        width: 480px;
+      }
+      body:not(.is-authenticated) .public-stack {
+        display: contents;
+      }
+      body:not(.is-authenticated) .public-hero,
+      body:not(.is-authenticated) .login-card {
+        min-height: 620px;
+        position: relative;
+        z-index: 1;
+      }
+      body:not(.is-authenticated) .public-hero {
+        align-items: end;
+        background:
+          linear-gradient(90deg, rgba(5, 18, 11, .46), rgba(5, 18, 11, .14)),
+          radial-gradient(circle at 18% 24%, rgba(67, 255, 142, .16), transparent 170px),
+          radial-gradient(circle at 60% 10%, rgba(37, 132, 71, .18), transparent 220px);
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 24px 0 0 24px;
+        box-shadow: none;
+        color: #fff;
+        display: flex;
+        overflow: hidden;
+        padding: clamp(34px, 6vw, 66px);
+      }
+      body:not(.is-authenticated) .public-hero:before,
+      body:not(.is-authenticated) .public-hero:after {
+        border-radius: 42% 58% 46% 54%;
+        content: "";
+        pointer-events: none;
+        position: absolute;
+      }
+      body:not(.is-authenticated) .public-hero:before {
+        background: rgba(80, 255, 150, .16);
+        box-shadow:
+          0 0 55px rgba(80, 255, 150, .18),
+          140px 45px 0 rgba(16, 112, 56, .18),
+          270px -12px 0 rgba(59, 208, 112, .1);
+        filter: blur(18px);
+        height: 190px;
+        left: 18px;
+        top: 42px;
+        transform: rotate(18deg);
+        width: 150px;
+      }
+      body:not(.is-authenticated) .public-hero:after {
+        background:
+          linear-gradient(115deg, transparent 0 46%, rgba(118, 255, 180, .28) 47% 50%, transparent 51%),
+          radial-gradient(ellipse at center, rgba(94, 255, 155, .14), transparent 62%);
+        filter: blur(.3px);
+        height: 360px;
+        opacity: .68;
+        right: -120px;
+        top: -64px;
+        transform: rotate(-22deg);
+        width: 360px;
+      }
+      body:not(.is-authenticated) .public-hero > div:first-child {
+        max-width: 560px;
+        position: relative;
+        z-index: 1;
+      }
+      body:not(.is-authenticated) .product-kicker {
+        color: #86efac;
+        letter-spacing: .16em;
+      }
+      body:not(.is-authenticated) .public-hero h2 {
+        color: #fff;
+        font-size: clamp(46px, 6.4vw, 72px);
+        font-weight: 950;
+        letter-spacing: -.055em;
+        line-height: .92;
+        margin-bottom: 22px;
+      }
+      body:not(.is-authenticated) .public-hero p {
+        color: rgba(236, 253, 245, .78);
+        font-size: 18px;
+        font-weight: 650;
+        line-height: 1.5;
+        max-width: 540px;
+      }
+      body:not(.is-authenticated) .public-actions button {
+        background: #0fa968;
+        border: 1px solid rgba(134, 239, 172, .22);
+        border-radius: 0;
+        box-shadow: 0 18px 36px rgba(3, 105, 62, .34);
+        color: #fff;
+        min-height: 50px;
+        padding: 0 24px;
+      }
+      body:not(.is-authenticated) .public-actions button.secondary {
+        background: rgba(255, 255, 255, .08);
+        color: #eafff2;
+      }
+      body:not(.is-authenticated) .trust-line {
+        color: rgba(236, 253, 245, .62);
+      }
+      body:not(.is-authenticated) .hero-console {
+        display: none;
+      }
+      body:not(.is-authenticated) .login-card {
+        align-self: stretch;
+        background:
+          linear-gradient(90deg, rgba(0, 0, 0, .06), transparent 22%),
+          rgba(0, 11, 7, .72);
+        backdrop-filter: blur(18px);
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-left: 1px solid rgba(134, 239, 172, .22);
+        border-radius: 0 24px 24px 0;
+        box-shadow: none;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        grid-column: 2;
+        grid-row: 1;
+        justify-content: center;
+        overflow: hidden;
+        padding: clamp(34px, 5vw, 58px);
+        position: relative;
+        top: auto;
+      }
+      body:not(.is-authenticated) .login-card:before,
+      body:not(.is-authenticated) .login-card:after {
+        background: linear-gradient(180deg, transparent, rgba(211, 255, 226, .52), transparent);
+        content: "";
+        height: 160px;
+        opacity: .5;
+        position: absolute;
+        right: 98px;
+        width: 1px;
+      }
+      body:not(.is-authenticated) .login-card:before {
+        top: 82px;
+      }
+      body:not(.is-authenticated) .login-card:after {
+        bottom: 82px;
+      }
+      body:not(.is-authenticated) .login-card .panel-head {
+        background: transparent;
+        border: 0;
+        color: #fff;
+        padding: 0 0 28px;
+      }
+      body:not(.is-authenticated) .login-card .panel-head h2 {
+        color: #fff;
+        font-size: 34px;
+        font-weight: 950;
+        letter-spacing: -.04em;
+      }
+      body:not(.is-authenticated) .login-card .panel-head p {
+        color: rgba(236, 253, 245, .64);
+        font-size: 14px;
+      }
+      body:not(.is-authenticated) .login-card .panel-head .pill {
+        background: rgba(255, 255, 255, .1);
+        border: 1px solid rgba(255, 255, 255, .12);
+        color: #bbf7d0;
+      }
+      body:not(.is-authenticated) .login-card .panel-body {
+        padding: 0;
+      }
+      body:not(.is-authenticated) .auth-tabs {
+        background: rgba(255, 255, 255, .06);
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 999px;
+        max-width: 330px;
+        padding: 5px;
+      }
+      body:not(.is-authenticated) .login-card .auth-tabs button {
+        border-radius: 999px;
+        color: rgba(236, 253, 245, .72);
+        min-height: 40px;
+      }
+      body:not(.is-authenticated) .login-card .auth-tabs button.active {
+        background: rgba(15, 169, 104, .94);
+        border: 0;
+        box-shadow: 0 12px 28px rgba(3, 105, 62, .34);
+        color: #fff;
+      }
+      body:not(.is-authenticated) .login-card label {
+        color: rgba(236, 253, 245, .74);
+        font-size: 13px;
+        font-weight: 850;
+        letter-spacing: 0;
+        margin-bottom: 24px;
+        text-transform: none;
+      }
+      body:not(.is-authenticated) .login-card input {
+        background: transparent;
+        border: 0;
+        border-bottom: 1px solid rgba(236, 253, 245, .42);
+        border-radius: 0;
+        color: #fff;
+        min-height: 44px;
+        padding: 0 2px;
+      }
+      body:not(.is-authenticated) .login-card input:focus {
+        border-color: #22c55e;
+        box-shadow: 0 8px 24px -24px rgba(34, 197, 94, .8);
+      }
+      body:not(.is-authenticated) .login-card input:-webkit-autofill {
+        -webkit-box-shadow: 0 0 0 1000px #06150d inset;
+        -webkit-text-fill-color: #fff;
+      }
+      body:not(.is-authenticated) .login-card button[type="submit"] {
+        background: linear-gradient(135deg, #10a363, #07894f);
+        border-radius: 0;
+        box-shadow: 0 18px 42px rgba(3, 105, 62, .34);
+        color: #fff;
+        font-size: 16px;
+        margin-top: 8px;
+        min-height: 54px;
+      }
+      body:not(.is-authenticated) .login-card button[type="submit"]:hover {
+        background: linear-gradient(135deg, #15b873, #099459);
+      }
+      body:not(.is-authenticated) .login-note {
+        border-color: rgba(236, 253, 245, .14);
+        color: rgba(236, 253, 245, .62);
+      }
+      body:not(.is-authenticated) .detail-grid,
+      body:not(.is-authenticated) .api-panel,
+      body:not(.is-authenticated) .pricing-row {
+        grid-column: 1 / -1;
+        position: relative;
+        z-index: 1;
+      }
+      body:not(.is-authenticated) .detail-card,
+      body:not(.is-authenticated) .api-panel,
+      body:not(.is-authenticated) .price-card {
+        background: rgba(255, 255, 255, .92);
+        border-color: rgba(255, 255, 255, .72);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, .16);
       }
       .is-authenticated .public-stack,
       .is-authenticated .login-card {
