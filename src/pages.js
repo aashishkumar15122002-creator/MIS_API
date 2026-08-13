@@ -727,8 +727,9 @@ function loginPage({ config }) {
             <nav class="side-nav" aria-label="Dashboard sections">
               <button type="button" data-scroll-target="overview"><span class="nav-icon">⌂</span><span class="nav-text">Overview</span></button>
               <button type="button" data-scroll-target="phoneCards"><span class="nav-icon">◉</span><span class="nav-text">WhatsApp QR</span></button>
-              <button type="button" data-scroll-target="sideGroupsCard"><span class="nav-icon">☷</span><span class="nav-text">Groups</span></button>
+              <button type="button" data-scroll-target="groupsMain"><span class="nav-icon">☷</span><span class="nav-text">Groups</span></button>
               <button type="button" data-scroll-target="history"><span class="nav-icon">↻</span><span class="nav-text">Logs</span></button>
+              <button type="button" data-scroll-target="recentMain"><span class="nav-icon">◷</span><span class="nav-text">Recent logs</span></button>
             </nav>
             <section class="side-card side-subscription" id="sideSubscriptionCard" data-icon="◆">
               <div class="side-card-icon">◆</div>
@@ -802,6 +803,27 @@ function loginPage({ config }) {
               <div id="phoneCards"></div>
             </div>
           </section>
+          <div class="dash-grid dashboard-insights">
+            <section id="groupsMain" class="main-card">
+              <div class="panel-head">
+                <div><h2>WhatsApp Groups</h2><p>Copy group IDs and use them as the API or sheet recipient.</p></div>
+                <span class="pill" id="mainGroupCount">0 groups</span>
+              </div>
+              <div class="panel-body">
+                <p class="small" id="mainGroupsState">Connect WhatsApp to load groups.</p>
+                <div class="main-group-list" id="mainGroupsList"></div>
+              </div>
+            </section>
+            <section id="recentMain" class="main-card">
+              <div class="panel-head">
+                <div><h2>Recent Logs</h2><p>Latest sent, failed, and received message events.</p></div>
+                <span class="pill" id="mainRecentCount">0 logs</span>
+              </div>
+              <div class="panel-body">
+                <div class="main-recent-list" id="mainRecentLogs"></div>
+              </div>
+            </section>
+          </div>
           <div class="dash-grid" id="history">
             <section>
               <div class="panel-head"><h2>Message Queue</h2><span class="pill queued" id="queueLabel">0 queued</span></div>
@@ -1009,6 +1031,7 @@ function loginPage({ config }) {
         }
         showCustomerShell();
         const queueRows = queue.queue || [];
+        const activeQueueRows = queueRows.filter(item => item.status === 'queued' || item.status === 'sending');
         const logRows = logs.messages || [];
         const failedRows = logRows.filter(item => item.status === 'failed');
         document.getElementById('customerName').textContent = me.customer.name + ' workspace';
@@ -1021,24 +1044,25 @@ function loginPage({ config }) {
           : '';
         document.getElementById('dashboardNotice').className = 'dashboard-notice';
         customerApiKey = me.customer.apiKey || '';
-        renderSidePanel(me.customer, me.phones || [], queueRows, logRows);
+        renderSidePanel(me.customer, me.phones || [], activeQueueRows, logRows);
         document.getElementById('phoneCount').textContent = me.phones.length;
-        document.getElementById('queueCount').textContent = queueRows.length;
+        document.getElementById('queueCount').textContent = activeQueueRows.length;
         document.getElementById('logCount').textContent = logRows.length;
         document.getElementById('failedCount').textContent = failedRows.length;
-        document.getElementById('queueLabel').textContent = queueRows.filter(item => item.status === 'queued' || item.status === 'sending').length + ' queued';
+        document.getElementById('queueLabel').textContent = activeQueueRows.length + ' active';
         document.getElementById('logLabel').textContent = logRows.length + ' logs';
         document.getElementById('phoneCards').innerHTML = me.phones.length
           ? me.phones.map(phoneCard).join('')
           : '<div class="empty-state"><strong>Preparing WhatsApp number</strong><span>Refresh once. Your WhatsApp card is created automatically.</span></div>';
         refreshScriptBoxes();
         hydratePhoneCards(me.phones || []);
-        document.getElementById('queueRows').innerHTML = queueRows.length
-          ? queueRows.map(row).join('')
-          : '<tr><td colspan="4" class="empty-row"><strong>No queued messages</strong><span>Messages waiting to be sent will appear here.</span></td></tr>';
+        document.getElementById('queueRows').innerHTML = activeQueueRows.length
+          ? activeQueueRows.map(row).join('')
+          : '<tr><td colspan="4" class="empty-row"><strong>No active queue</strong><span>Only messages still queued or sending appear here.</span></td></tr>';
         document.getElementById('logRows').innerHTML = logRows.length
           ? logRows.map(row).join('')
           : '<tr><td colspan="4" class="empty-row"><strong>No message activity</strong><span>Sent, failed, and received messages will appear here.</span></td></tr>';
+        renderMainRecentLogs(logRows);
         loadGroupsPanel();
       }
 
@@ -1108,6 +1132,13 @@ function loginPage({ config }) {
         document.getElementById('groupsList').innerHTML = groups.length
           ? groups.slice(0, 14).map(groupItem).join('')
           : '<div class="side-empty">No WhatsApp groups available.</div>';
+        document.getElementById('mainGroupCount').textContent = groups.length + ' group' + (groups.length === 1 ? '' : 's');
+        document.getElementById('mainGroupsState').textContent = groups.length
+          ? 'Use these group IDs in column A of your Sheet or in the API "to" field.'
+          : (data.error || 'No groups found yet. Make sure WhatsApp is connected.');
+        document.getElementById('mainGroupsList').innerHTML = groups.length
+          ? groups.map(mainGroupItem).join('')
+          : '<div class="empty-state"><strong>No groups loaded</strong><span>Connect WhatsApp, then click Refresh in the sidebar groups card.</span></div>';
       }
 
       function groupItem(group) {
@@ -1133,6 +1164,40 @@ function loginPage({ config }) {
           '<div><strong>' + escapeHtml(statusLabel(status)) + ' • ' + escapeHtml(recipient) + '</strong>' +
           '<span title="' + escapeHtml(content) + '">' + escapeHtml(content) + '</span>' +
           '<small>' + escapeHtml(formatDate(item.updatedAt || item.createdAt)) + '</small></div>' +
+          '</div>';
+      }
+
+      function mainGroupItem(group) {
+        const meta = [
+          group.participants ? group.participants + ' members' : '',
+          group.announce ? 'admin-only' : '',
+          group.restrict ? 'restricted' : '',
+          group.phoneId ? 'Phone ' + group.phoneId : ''
+        ].filter(Boolean).join(' • ');
+        return '<div class="main-group-item">' +
+          '<div><strong>' + escapeHtml(group.subject || 'Unnamed group') + '</strong>' +
+          '<span>' + escapeHtml(meta || 'WhatsApp group') + '</span>' +
+          '<code>' + escapeHtml(group.id) + '</code></div>' +
+          '<button class="secondary" type="button" data-copy-group="' + escapeHtml(group.id) + '">Copy group ID</button>' +
+          '</div>';
+      }
+
+      function renderMainRecentLogs(logRows) {
+        const recentRows = logRows.slice(0, 12);
+        document.getElementById('mainRecentCount').textContent = recentRows.length + ' recent';
+        document.getElementById('mainRecentLogs').innerHTML = recentRows.length
+          ? recentRows.map(mainRecentItem).join('')
+          : '<div class="empty-state"><strong>No recent logs</strong><span>Message activity will appear here after sends or incoming messages.</span></div>';
+      }
+
+      function mainRecentItem(item) {
+        const content = item.message || item.error || item.file?.filename || 'Message';
+        const recipient = item.direction === 'inbound' ? (item.from || '-') : (item.to || '-');
+        const status = item.status || '';
+        return '<div class="main-recent-item">' +
+          '<span class="pill ' + escapeHtml(status) + '">' + escapeHtml(statusLabel(status)) + '</span>' +
+          '<div><strong>' + escapeHtml(recipient) + '</strong><p>' + escapeHtml(content) + '</p></div>' +
+          '<time>' + escapeHtml(formatDate(item.updatedAt || item.createdAt)) + '</time>' +
           '</div>';
       }
 
@@ -3529,6 +3594,82 @@ function premiumSaaSStyles() {
         color: #0f766e;
         font-family: var(--mono);
         padding: 2px 5px;
+      }
+      .dashboard-insights {
+        align-items: stretch;
+      }
+      .main-card {
+        scroll-margin-top: 96px;
+      }
+      .main-group-list,
+      .main-recent-list {
+        display: grid;
+        gap: 10px;
+      }
+      .main-group-item,
+      .main-recent-item {
+        align-items: center;
+        background:
+          radial-gradient(circle at top right, rgba(20,184,166,.09), transparent 180px),
+          #fbfdff;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+      .main-group-item {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+      .main-group-item strong,
+      .main-group-item span,
+      .main-group-item code {
+        display: block;
+      }
+      .main-group-item strong {
+        color: var(--text);
+        font-size: 15px;
+        margin-bottom: 4px;
+      }
+      .main-group-item span {
+        color: var(--text-muted);
+        font-size: 12px;
+        margin-bottom: 8px;
+      }
+      .main-group-item code {
+        background: #ecfdf5;
+        border: 1px solid #bbf7d0;
+        border-radius: 10px;
+        color: #047857;
+        font-family: var(--mono);
+        font-size: 12px;
+        overflow-wrap: anywhere;
+        padding: 8px 10px;
+      }
+      .main-recent-item {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+      }
+      .main-recent-item strong,
+      .main-recent-item p,
+      .main-recent-item time {
+        display: block;
+      }
+      .main-recent-item strong {
+        color: var(--text);
+        font-size: 13px;
+      }
+      .main-recent-item p {
+        color: var(--text-muted);
+        font-size: 13px;
+        margin: 3px 0 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .main-recent-item time {
+        color: #94a3b8;
+        font-size: 12px;
+        white-space: nowrap;
       }
       .customer-dashboard {
         gap: 18px;
