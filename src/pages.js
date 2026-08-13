@@ -491,6 +491,7 @@ function loginPage({ config }) {
         .public-hero h2 { font-size: 36px; }
       }
       ${professionalStyles()}
+      ${premiumSaaSStyles()}
     </style>
   </head>
   <body>
@@ -499,74 +500,100 @@ function loginPage({ config }) {
         <div class="portal-title">
           <h1>MIS_api</h1>
         </div>
-        <div class="actions"><a class="button secondary" href="mailto:${escapeHtml(payment.salesEmail)}">Support</a><button class="secondary top-logout hidden" id="topLogoutBtn">Logout</button></div>
+        <nav class="portal-nav" aria-label="Primary">
+          <button class="ghost" type="button" data-scroll-target="api">API Docs</button>
+          <button class="ghost" type="button" data-scroll-target="pricing">Pricing</button>
+          <a class="ghost-link" href="mailto:${escapeHtml(payment.salesEmail)}">Support</a>
+        </nav>
+        <div class="actions"><button class="secondary top-logout hidden" id="topLogoutBtn">Logout</button></div>
       </div>
       <div class="login-grid">
         <section class="login-card" id="loginCard">
-          <div class="panel-head"><h2 id="authTitle">Sign in</h2><span class="pill">Secure access</span></div>
+          <div class="panel-head"><div><h2 id="authTitle">Welcome to MIS_api</h2><p id="authSubtitle">Sign in to manage your WhatsApp API workspace.</p></div><span class="pill">Secure</span></div>
           <div class="panel-body">
             <div class="auth-tabs">
               <button class="active" id="showLoginBtn" type="button">Sign in</button>
               <button class="secondary" id="showSignupBtn" type="button">Create account</button>
             </div>
             <form id="loginForm">
-              <label>Username<input id="username" autocomplete="username"></label>
+              <label>User ID<input id="username" autocomplete="username"></label>
               <label>Password<input id="password" type="password" autocomplete="current-password"></label>
-              <button id="loginBtn" type="submit">Continue</button>
+              <button id="loginBtn" type="submit">Sign in</button>
             </form>
             <form class="hidden" id="signupForm">
               <label>Company name<input id="signupName" autocomplete="organization"></label>
               <label>User ID<input id="signupUsername" autocomplete="username"></label>
               <label>Password<input id="signupPassword" type="password" autocomplete="new-password"></label>
-              <button id="signupBtn" type="submit">Start trial</button>
+              <button id="signupBtn" type="submit">Start free trial</button>
             </form>
-            <p class="small" id="loginError"></p>
+            <p class="small auth-error" id="loginError"></p>
             <div class="login-note" id="authNote">Admin and customer workspaces are protected. Use logout after managing shared devices.</div>
           </div>
         </section>
         <div id="publicDetails" class="public-stack">
           <section class="public-hero">
             <div>
-              <div class="product-kicker">Messaging operations</div>
-              <h2>WhatsApp API control panel</h2>
-              <p>Connect customer numbers, monitor QR sessions, review queued sends, and keep every API message visible from one workspace.</p>
+              <div class="product-kicker">WhatsApp API Infrastructure</div>
+              <h2>WhatsApp messaging infrastructure, without the operational headache.</h2>
+              <p>Connect WhatsApp numbers, manage QR sessions, queue outbound messages and monitor delivery activity from one developer-friendly workspace.</p>
               <div class="public-actions">
-                <button type="button" data-scroll-target="api">View endpoint</button>
-                <button class="secondary" type="button" data-scroll-target="pricing">Plan details</button>
+                <button type="button" data-scroll-target="api">View API endpoint</button>
+                <button class="secondary" type="button" data-scroll-target="pricing">View plans</button>
               </div>
+              <div class="trust-line">Built for developers • Queue controls • Message logs • Secure API access</div>
             </div>
             <div class="hero-console" aria-label="API preview">
               <div class="console-top"><strong>POST /v1/messages/send</strong><span class="pill queued">Queued</span></div>
               <div class="console-body">
-                <div><span>Phone</span><strong>QR connected</strong></div>
-                <div><span>Queue delay</span><strong>${Math.round(config.queueIntervalMs / 1000)} sec</strong></div>
-                <div><span>Message logs</span><strong>Sent / failed</strong></div>
-                <div><span>Access</span><strong>API key</strong></div>
+                <div><span><i class="status-dot connected"></i>QR session</span><strong>Connected</strong></div>
+                <div><span><i class="status-dot warning"></i>Queue interval</span><strong>${Math.round(config.queueIntervalMs / 1000)} sec</strong></div>
+                <div><span><i class="status-dot neutral"></i>Logs</span><strong>Sent / Failed</strong></div>
+                <div><span><i class="status-dot connected"></i>Authentication</span><strong>Bearer API key</strong></div>
               </div>
             </div>
           </section>
 
           <div class="detail-grid" id="features">
-            <div class="detail-card"><strong>QR sessions</strong><span>Link, reconnect, and check device status without touching the API.</span></div>
-            <div class="detail-card"><strong>Message queue</strong><span>Release sends at a controlled interval instead of sending bursts.</span></div>
-            <div class="detail-card"><strong>Audit trail</strong><span>Give customers and admins a clear view of sent and failed messages.</span></div>
+            <div class="detail-card">${iconSvg('qr')}<strong>QR Sessions</strong><span>Connect, reconnect and monitor WhatsApp sessions from one place.</span></div>
+            <div class="detail-card">${iconSvg('queue')}<strong>Message Queue</strong><span>Release outbound messages at controlled intervals instead of sending in bursts.</span></div>
+            <div class="detail-card">${iconSvg('logs')}<strong>Audit Trail</strong><span>See sent and failed messages with a clear operational history.</span></div>
           </div>
 
           <section class="api-panel" id="api">
-            <h2>API Details</h2>
-            <div class="api-box">POST ${escapeHtml(config.baseUrl)}/v1/messages/send<br><br>Authorization: Bearer CUSTOMER_API_KEY<br><br>{<br>&nbsp;&nbsp;"phoneId": "PHONE_ID",<br>&nbsp;&nbsp;"to": "91XXXXXXXXXX",<br>&nbsp;&nbsp;"message": "Hello from MIS_api"<br>}</div>
+            <div class="section-head">
+              <div><h2>Send your first message</h2><p>Use your customer API key to send messages through your connected WhatsApp number.</p></div>
+              <button class="secondary" id="copyPublicApiBtn" type="button">Copy</button>
+            </div>
+            <pre class="api-box"><code id="publicCurlCode">curl -X POST ${escapeHtml(config.baseUrl)}/v1/messages/send \\
+  -H "Authorization: Bearer CUSTOMER_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "phoneId": "PHONE_ID",
+    "to": "91XXXXXXXXXX",
+    "message": "Hello from MIS_api"
+  }'</code></pre>
           </section>
 
           <div class="pricing-row" id="pricing">
-            <div class="detail-card">
-              <strong>Free Trial</strong>
+            <div class="price-card">
+              <span class="price-label">Free Trial</span>
               <div class="price-big">${Number(config.trialDays || 7)} days</div>
               <p>Test one connected WhatsApp account with API access, queue, logs, and dashboard access.</p>
+              <button type="button" data-auth-mode="signup">Start free trial</button>
             </div>
-            <div class="detail-card price-card-main">
-              <strong>${escapeHtml(payment.planName)}</strong>
+            <div class="price-card price-card-main">
+              <span class="recommended">Recommended</span>
+              <span class="price-label">${escapeHtml(payment.planName)}</span>
               <div class="price-big">${escapeHtml(payment.monthlyPrice)}</div>
-              <p>One mobile number with QR reconnect page, API key, queue, logs, and support at ${escapeHtml(payment.salesEmail)}.</p>
+              <ul>
+                <li>One WhatsApp number</li>
+                <li>QR reconnect page</li>
+                <li>API key access</li>
+                <li>Queue management</li>
+                <li>Message logs</li>
+                <li>Support</li>
+              </ul>
+              <a class="button secondary" href="mailto:${escapeHtml(payment.salesEmail)}">Contact support</a>
             </div>
           </div>
         </div>
@@ -668,19 +695,29 @@ function loginPage({ config }) {
       document.getElementById('topLogoutBtn').addEventListener('click', logout);
       document.getElementById('adminRefreshBtn').addEventListener('click', loadAdminDashboard);
       document.getElementById('adminCreateBtn').addEventListener('click', createAdminCustomer);
+      document.getElementById('copyPublicApiBtn')?.addEventListener('click', async () => {
+        await copyText(document.getElementById('publicCurlCode').textContent);
+        document.getElementById('copyPublicApiBtn').textContent = 'Copied';
+        setTimeout(() => {
+          document.getElementById('copyPublicApiBtn').textContent = 'Copy';
+        }, 1200);
+      });
       const phonePollers = new Map();
       const apiBaseUrl = ${JSON.stringify(config.baseUrl)};
       let customerApiKey = '';
 
       function setAuthMode(mode) {
         const signup = mode === 'signup';
-        document.getElementById('authTitle').textContent = signup ? 'Create account' : 'Sign in';
+        document.getElementById('authTitle').textContent = 'Welcome to MIS_api';
+        document.getElementById('authSubtitle').textContent = signup
+          ? 'Create your workspace and start your free trial.'
+          : 'Sign in to manage your WhatsApp API workspace.';
         document.getElementById('loginForm').classList.toggle('hidden', signup);
         document.getElementById('signupForm').classList.toggle('hidden', !signup);
         document.getElementById('showLoginBtn').className = signup ? 'secondary' : 'active';
         document.getElementById('showSignupBtn').className = signup ? 'active' : 'secondary';
         document.getElementById('authNote').textContent = signup
-          ? 'One free trial is allowed for each user ID. Existing users should sign in.'
+          ? '${Number(config.trialDays || 7)}-day free trial. One trial is allowed for each user ID.'
           : 'Admin and customer workspaces are protected. Use logout after managing shared devices.';
         document.getElementById('loginError').textContent = '';
       }
@@ -901,6 +938,13 @@ function loginPage({ config }) {
         if (scrollButton) {
           const target = document.getElementById(scrollButton.getAttribute('data-scroll-target'));
           target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+
+        const authButton = event.target.closest('[data-auth-mode]');
+        if (authButton) {
+          setAuthMode(authButton.getAttribute('data-auth-mode'));
+          document.getElementById('loginCard')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return;
         }
 
@@ -1914,6 +1958,15 @@ function consoleStyles() {
       }`;
 }
 
+function iconSvg(name) {
+  const icons = {
+    qr: '<svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h2v2h-2z"/><path d="M18 14h2v6h-6v-2h4z"/><path d="M14 18h2v2h-2z"/></svg>',
+    queue: '<svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3 2"/><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>',
+    logs: '<svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10"/><path d="M7 8h10"/><path d="M7 12h6"/><path d="M5 20h14a2 2 0 0 0 2-2V6"/><path d="M3 6v12a2 2 0 0 0 2 2"/></svg>'
+  };
+  return icons[name] || '';
+}
+
 function professionalStyles() {
   return `
       :root {
@@ -2250,6 +2303,646 @@ function professionalStyles() {
         }
         .login-grid {
           grid-template-columns: 1fr;
+        }
+      }`;
+}
+
+function premiumSaaSStyles() {
+  return `
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --surface-muted: #f1f5f9;
+        --text: #0f172a;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+        --primary: #0f8a78;
+        --primary-hover: #0b7466;
+        --success: #16a34a;
+        --warning: #d97706;
+        --danger: #dc2626;
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+        --shadow-soft: 0 1px 2px rgba(15, 23, 42, .04), 0 12px 30px rgba(15, 23, 42, .06);
+      }
+      * {
+        min-width: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: radial-gradient(circle at top left, rgba(15, 138, 120, .07), transparent 380px), var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main {
+        max-width: 1180px;
+        padding: 18px 16px 56px;
+      }
+      .portal-top {
+        align-items: center;
+        background: rgba(255, 255, 255, .88);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+        display: grid;
+        gap: 16px;
+        grid-template-columns: auto 1fr auto;
+        margin: 0 0 18px;
+        padding: 12px 14px;
+        position: sticky;
+        top: 12px;
+        z-index: 10;
+        backdrop-filter: blur(18px);
+      }
+      .portal-title h1 {
+        align-items: center;
+        display: inline-flex;
+        font-size: 21px;
+        font-weight: 850;
+        gap: 9px;
+      }
+      .portal-title h1:before {
+        background: linear-gradient(135deg, #0f8a78, #22c55e);
+        border-radius: 9px;
+        content: "";
+        height: 28px;
+        width: 28px;
+      }
+      .portal-title h1:after {
+        display: none;
+      }
+      .portal-nav {
+        align-items: center;
+        display: flex;
+        gap: 6px;
+        justify-content: flex-end;
+      }
+      .ghost,
+      .ghost-link {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-radius: var(--radius-sm);
+        box-shadow: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        display: inline-flex;
+        font-size: 14px;
+        font-weight: 700;
+        min-height: 36px;
+        padding: 0 10px;
+        text-decoration: none;
+      }
+      .ghost:hover,
+      .ghost-link:hover {
+        background: var(--surface-muted);
+        box-shadow: none;
+        color: var(--text);
+        transform: none;
+      }
+      button,
+      .button {
+        border-radius: 10px;
+        font-weight: 750;
+        transition: background .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
+      }
+      button:hover,
+      .button:hover {
+        transform: translateY(-1px);
+      }
+      button:focus-visible,
+      .button:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible {
+        outline: 3px solid rgba(15, 138, 120, .18);
+        outline-offset: 2px;
+      }
+      button[disabled] {
+        cursor: not-allowed;
+        opacity: .64;
+        transform: none;
+      }
+      .login-grid {
+        align-items: start;
+        display: grid;
+        gap: 18px;
+        grid-template-columns: minmax(0, 1.15fr) minmax(340px, .85fr);
+      }
+      .public-stack {
+        display: grid;
+        gap: 16px;
+      }
+      .public-hero {
+        background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-soft);
+        color: var(--text);
+        display: grid;
+        gap: 28px;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, .8fr);
+        min-height: auto;
+        padding: 34px;
+      }
+      .product-kicker {
+        color: var(--primary);
+        font-size: 12px;
+        font-weight: 850;
+        margin-bottom: 14px;
+        text-transform: uppercase;
+      }
+      .public-hero h2 {
+        color: var(--text);
+        font-size: 42px;
+        font-weight: 850;
+        letter-spacing: 0;
+        line-height: 1.04;
+        margin: 0 0 14px;
+        max-width: 720px;
+      }
+      .public-hero p {
+        color: var(--text-muted);
+        font-size: 16px;
+        line-height: 1.7;
+        max-width: 690px;
+      }
+      .public-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 24px;
+      }
+      .public-actions button,
+      .price-card button,
+      .login-card button[type="submit"] {
+        background: var(--primary);
+        box-shadow: 0 10px 24px rgba(15, 138, 120, .18);
+        color: #fff;
+        min-height: 44px;
+      }
+      .public-actions button:hover,
+      .price-card button:hover,
+      .login-card button[type="submit"]:hover {
+        background: var(--primary-hover);
+      }
+      .public-actions button.secondary,
+      .button.secondary,
+      button.secondary {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        box-shadow: none;
+        color: var(--text);
+      }
+      .trust-line {
+        color: var(--text-muted);
+        font-size: 13px;
+        font-weight: 650;
+        margin-top: 18px;
+      }
+      .hero-console {
+        align-self: stretch;
+        background: #0b1220;
+        border: 1px solid #1e293b;
+        border-radius: var(--radius-md);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 18px 42px rgba(15, 23, 42, .14);
+        color: #e2e8f0;
+        overflow: hidden;
+      }
+      .console-top {
+        align-items: center;
+        background: #111827;
+        border-bottom: 1px solid #1e293b;
+        display: flex;
+        justify-content: space-between;
+        padding: 14px 16px;
+      }
+      .console-top strong {
+        color: #e2e8f0;
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .console-body {
+        display: grid;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        padding: 4px 0;
+      }
+      .console-body div {
+        align-items: center;
+        border-bottom: 1px solid rgba(148, 163, 184, .13);
+        display: flex;
+        justify-content: space-between;
+        padding: 14px 16px;
+      }
+      .console-body div:last-child {
+        border-bottom: 0;
+      }
+      .console-body span {
+        align-items: center;
+        color: #94a3b8;
+        display: inline-flex;
+        gap: 9px;
+      }
+      .console-body strong {
+        color: #f8fafc;
+        font-size: 14px;
+      }
+      .status-dot {
+        border-radius: 999px;
+        display: inline-block;
+        height: 8px;
+        width: 8px;
+      }
+      .status-dot.connected {
+        background: var(--success);
+      }
+      .status-dot.warning {
+        background: var(--warning);
+      }
+      .status-dot.neutral {
+        background: #38bdf8;
+      }
+      .pill {
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 850;
+        padding: 7px 9px;
+      }
+      .pill,
+      .pill.ready,
+      .pill.active,
+      .pill.sent {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .pill.queued,
+      .pill.sending,
+      .pill.starting,
+      .pill.qr {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .pill.failed,
+      .pill.error,
+      .pill.disconnected,
+      .pill.unlinked {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .login-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-soft);
+        grid-column: 2;
+        overflow: hidden;
+        position: sticky;
+        top: 88px;
+      }
+      .login-card .panel-head {
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+        padding: 20px 22px;
+      }
+      .login-card .panel-head h2 {
+        font-size: 20px;
+        font-weight: 850;
+        margin-bottom: 4px;
+      }
+      .login-card .panel-head p {
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+      .login-card .panel-body {
+        padding: 22px;
+      }
+      .auth-tabs {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        display: grid;
+        gap: 4px;
+        grid-template-columns: 1fr 1fr;
+        margin-bottom: 20px;
+        padding: 4px;
+      }
+      .login-card .auth-tabs button {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        color: var(--text-muted);
+        font-size: 13px;
+        min-height: 36px;
+      }
+      .login-card .auth-tabs button.active {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, .07);
+        color: var(--text);
+      }
+      .login-card label {
+        color: #334155;
+        font-size: 12px;
+        font-weight: 800;
+        gap: 8px;
+        letter-spacing: 0;
+        margin-bottom: 14px;
+        text-transform: none;
+      }
+      .login-card input,
+      input {
+        background: var(--surface);
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        color: var(--text);
+        font-size: 15px;
+        min-height: 46px;
+      }
+      .login-card input:focus,
+      input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(15, 138, 120, .14);
+        outline: 0;
+      }
+      .auth-error:not(:empty) {
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+        border-radius: var(--radius-sm);
+        color: #991b1b;
+        margin-top: 14px;
+        padding: 10px 12px;
+      }
+      .login-note {
+        border-top: 1px solid var(--border);
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.5;
+        margin-top: 16px;
+        padding-top: 14px;
+      }
+      .detail-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .detail-card,
+      .api-panel,
+      .price-card,
+      section,
+      .summary-card,
+      .phone-card,
+      .secret-box {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+      }
+      .detail-card {
+        display: grid;
+        gap: 10px;
+        padding: 18px;
+        transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+      }
+      .detail-card:hover {
+        border-color: #b6c4d7;
+        box-shadow: var(--shadow-soft);
+        transform: translateY(-2px);
+      }
+      .feature-icon {
+        background: #ecfdf5;
+        border: 1px solid #bbf7d0;
+        border-radius: 12px;
+        fill: none;
+        height: 38px;
+        padding: 8px;
+        stroke: var(--primary);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.9;
+        width: 38px;
+      }
+      .detail-card strong {
+        color: var(--text);
+        font-size: 16px;
+        font-weight: 850;
+      }
+      .detail-card span,
+      .detail-card p {
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .api-panel {
+        display: block;
+        padding: 0;
+        scroll-margin-top: 96px;
+      }
+      .section-head {
+        align-items: start;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        gap: 14px;
+        justify-content: space-between;
+        padding: 18px 20px;
+      }
+      .section-head h2 {
+        color: var(--text);
+        font-size: 18px;
+        font-weight: 850;
+        margin-bottom: 5px;
+      }
+      .section-head p {
+        color: var(--text-muted);
+        font-size: 14px;
+      }
+      .api-box,
+      .script-box textarea {
+        background: #0b1220;
+        border: 0;
+        border-radius: 0 0 var(--radius-md) var(--radius-md);
+        color: #dbeafe;
+        display: block;
+        font-family: var(--mono);
+        font-size: 13px;
+        line-height: 1.7;
+        margin: 0;
+        overflow-x: auto;
+        padding: 20px;
+        white-space: pre;
+      }
+      .pricing-row {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: .95fr 1.05fr;
+        scroll-margin-top: 96px;
+      }
+      .price-card {
+        display: grid;
+        gap: 12px;
+        padding: 20px;
+        position: relative;
+      }
+      .price-label {
+        color: var(--text);
+        font-size: 16px;
+        font-weight: 850;
+      }
+      .recommended {
+        background: #ecfdf5;
+        border: 1px solid #bbf7d0;
+        border-radius: 999px;
+        color: #166534;
+        font-size: 11px;
+        font-weight: 850;
+        justify-self: start;
+        padding: 6px 9px;
+        text-transform: uppercase;
+      }
+      .price-big {
+        color: var(--text);
+        font-size: 36px;
+        font-weight: 850;
+        line-height: 1;
+      }
+      .price-card p,
+      .price-card li {
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+      .price-card ul {
+        display: grid;
+        gap: 8px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .price-card li:before {
+        color: var(--success);
+        content: "\\2713";
+        font-weight: 900;
+        margin-right: 8px;
+      }
+      .price-card-main {
+        border-color: rgba(15, 138, 120, .34);
+        box-shadow: 0 16px 38px rgba(15, 138, 120, .09);
+      }
+      .customer-stack,
+      .admin-dashboard {
+        grid-column: 1 / -1;
+      }
+      .customer-hero .panel-head,
+      .admin-dashboard .panel-head {
+        background: var(--surface);
+      }
+      .customer-hero .panel-head h2 {
+        font-size: 22px;
+      }
+      .summary {
+        gap: 14px;
+      }
+      .summary-card {
+        box-shadow: none;
+        padding: 18px;
+      }
+      .summary-card span {
+        color: var(--text-muted);
+        font-size: 12px;
+        letter-spacing: 0;
+      }
+      .summary-card strong {
+        color: var(--text);
+        font-size: 28px;
+      }
+      .phone-card {
+        box-shadow: none;
+        margin-top: 14px;
+      }
+      .phone-card code {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-family: var(--mono);
+      }
+      table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+      }
+      th {
+        background: var(--surface-muted);
+        color: var(--text-muted);
+        font-size: 12px;
+        letter-spacing: 0;
+      }
+      th,
+      td {
+        border-bottom: 1px solid var(--border);
+      }
+      tbody tr:hover td {
+        background: #fbfdff;
+      }
+      td.message {
+        max-width: 360px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .panel-body {
+        overflow-x: auto;
+      }
+      @media (max-width: 1023px) {
+        .login-grid,
+        .public-hero,
+        .pricing-row {
+          grid-template-columns: 1fr;
+        }
+        .login-card {
+          grid-column: auto;
+          position: static;
+        }
+      }
+      @media (max-width: 767px) {
+        main {
+          padding: 12px;
+        }
+        .portal-top {
+          grid-template-columns: 1fr;
+          position: static;
+        }
+        .portal-nav {
+          justify-content: flex-start;
+          overflow-x: auto;
+        }
+        .public-hero {
+          padding: 22px;
+        }
+        .public-hero h2 {
+          font-size: 31px;
+        }
+        .detail-grid,
+        .summary,
+        .dash-grid,
+        .admin-grid,
+        .form-grid,
+        .result-grid {
+          grid-template-columns: 1fr;
+        }
+        .section-head {
+          display: grid;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *:before,
+        *:after {
+          scroll-behavior: auto !important;
+          transition: none !important;
         }
       }`;
 }
