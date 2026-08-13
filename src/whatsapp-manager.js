@@ -1,5 +1,6 @@
 const path = require('node:path');
 const fs = require('node:fs');
+const { EventEmitter } = require('node:events');
 const qrcode = require('qrcode');
 const {
   DisconnectReason,
@@ -11,6 +12,7 @@ const { updatePhone } = require('./store');
 
 const clients = new Map();
 const runtime = new Map();
+const whatsappEvents = new EventEmitter();
 const sessionDir = path.resolve(__dirname, '..', 'sessions');
 
 function getOrStartClient(phone) {
@@ -56,6 +58,9 @@ async function startClient(phone) {
     socket.ev.on('connection.update', update => {
       handleConnectionUpdate(phone, update);
     });
+    socket.ev.on('messages.upsert', update => {
+      handleMessagesUpsert(phone, update);
+    });
 
     return socket;
   } catch (err) {
@@ -88,6 +93,12 @@ async function handleConnectionUpdate(phone, update) {
       status: 'qr',
       lastQrAt: new Date().toISOString()
     });
+    emitWhatsappEvent('phone.status', {
+      phoneId: phone.id,
+      customerId: phone.customerId,
+      status: 'qr',
+      ready: false
+    });
     return;
   }
 
@@ -99,6 +110,12 @@ async function handleConnectionUpdate(phone, update) {
       error: null
     });
     updatePhone(phone.id, { status: 'starting' });
+    emitWhatsappEvent('phone.status', {
+      phoneId: phone.id,
+      customerId: phone.customerId,
+      status: 'starting',
+      ready: false
+    });
   }
 
   if (connection === 'open') {
@@ -112,6 +129,12 @@ async function handleConnectionUpdate(phone, update) {
     updatePhone(phone.id, {
       status: 'ready',
       lastReadyAt: new Date().toISOString()
+    });
+    emitWhatsappEvent('phone.status', {
+      phoneId: phone.id,
+      customerId: phone.customerId,
+      status: 'ready',
+      ready: true
     });
   }
 
@@ -132,12 +155,37 @@ async function handleConnectionUpdate(phone, update) {
       status: loggedOut ? 'unlinked' : 'disconnected',
       lastDisconnectedAt: new Date().toISOString()
     });
+    emitWhatsappEvent('phone.status', {
+      phoneId: phone.id,
+      customerId: phone.customerId,
+      status: loggedOut ? 'unlinked' : 'disconnected',
+      ready: false,
+      error: loggedOut ? null : message
+    });
 
     if (!loggedOut) {
       setTimeout(() => {
         getOrStartClient(phone);
       }, 3000);
     }
+  }
+}
+
+function handleMessagesUpsert(phone, update = {}) {
+  const messages = Array.isArray(update.messages) ? update.messages : [];
+  for (const message of messages) {
+    if (!message?.message || message.key?.fromMe) {
+      continue;
+    }
+
+    emitWhatsappEvent('message.received', {
+      phoneId: phone.id,
+      customerId: phone.customerId,
+      from: normalizeJid(message.key?.remoteJid),
+      message: extractText(message.message),
+      whatsappMessageId: message.key?.id || null,
+      receivedAt: new Date().toISOString()
+    });
   }
 }
 
@@ -274,9 +322,37 @@ function normalizePhone(value) {
   return String(value || '').replace(/[^\d]/g, '');
 }
 
+function normalizeJid(value) {
+  return String(value || '').split('@')[0].replace(/[^\d]/g, '');
+}
+
+function extractText(message) {
+  return String(
+    message.conversation ||
+    message.extendedTextMessage?.text ||
+    message.imageMessage?.caption ||
+    message.videoMessage?.caption ||
+    message.documentMessage?.caption ||
+    ''
+  );
+}
+
+function emitWhatsappEvent(event, payload) {
+  whatsappEvents.emit('event', {
+    event,
+    payload,
+    timestamp: new Date().toISOString()
+  });
+}
+
+function onWhatsappEvent(listener) {
+  whatsappEvents.on('event', listener);
+}
+
 module.exports = {
   getOrStartClient,
   getRuntimeStatus,
+  onWhatsappEvent,
   restartClient,
   sendMessage,
   sendText,

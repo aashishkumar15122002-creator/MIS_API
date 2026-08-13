@@ -83,6 +83,7 @@ function createCustomer({ name, trialDays, username, password }) {
     apiKey,
     apiKeyHash: hash(apiKey),
     connectTokenHash: hash(connectToken),
+    webhookUrl: '',
     trialEndsAt: trialEndsAt.toISOString(),
     subscriptionStatus: 'trialing',
     createdAt: now.toISOString()
@@ -150,6 +151,17 @@ function findCustomerByApiKey(apiKey) {
 
 function findCustomerById(customerId) {
   return readDb().customers.find(customer => customer.id === customerId) || null;
+}
+
+function updateCustomer(customerId, patch) {
+  const db = readDb();
+  const customer = db.customers.find(item => item.id === customerId);
+  if (!customer) {
+    return null;
+  }
+  Object.assign(customer, patch);
+  writeDb(db);
+  return customer;
 }
 
 function findCustomerByLogin(username, password) {
@@ -396,6 +408,7 @@ module.exports = {
   listQueue,
   logMessage,
   nextQueuedMessage,
+  updateCustomer,
   updatePhone,
   updateQueueMessage,
   verifyConnectToken

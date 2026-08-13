@@ -384,6 +384,56 @@ function adminPage({ config }) {
       function daysLeft(value) {
         return Math.ceil((new Date(value).getTime() - Date.now()) / 86400000);
       }
+
+      function customerStatusLabel(customer) {
+        if (customer.subscriptionStatus === 'active') return 'Active plan';
+        const left = daysLeft(customer.trialEndsAt);
+        if (left < 0) return 'Trial expired';
+        return 'Free trial';
+      }
+
+      function customerStatusClass(customer) {
+        if (customer.subscriptionStatus === 'active') return 'active';
+        return daysLeft(customer.trialEndsAt) < 0 ? 'failed' : 'queued';
+      }
+
+      function trialBanner(customer) {
+        if (customer.subscriptionStatus === 'active') {
+          return '<strong>Active plan</strong><span>Your workspace is active and ready for API sends.</span>';
+        }
+        const left = daysLeft(customer.trialEndsAt);
+        if (left < 0) {
+          return '<strong>Trial expired</strong><span>Sending is paused until the subscription is activated.</span>';
+        }
+        return '<strong>Free trial</strong><span>' + left + ' day' + (left === 1 ? '' : 's') + ' remaining. Trial ends ' + escapeHtml(formatDate(customer.trialEndsAt)) + '.</span><div class="trial-progress"><i style="width:' + Math.max(0, Math.min(100, Math.round((left / ${Number(config.trialDays || 7)}) * 100))) + '%"></i></div>';
+      }
+
+      function friendlyPhoneStatus(status) {
+        const labels = {
+          created: 'setup needed',
+          starting: 'starting',
+          qr: 'scan QR',
+          ready: 'connected',
+          disconnected: 'inactive',
+          unlinked: 'inactive',
+          error: 'error',
+          auth_failure: 'auth failed'
+        };
+        return labels[status] || status;
+      }
+
+      function phoneSeverity(status, connected) {
+        if (connected || status === 'ready') return 'active';
+        if (status === 'qr' || status === 'starting' || status === 'created') return 'queued';
+        return 'failed';
+      }
+
+      function phoneStatusHelp(status, connected) {
+        if (connected || status === 'ready') return 'Connected and ready to send queued API messages.';
+        if (status === 'qr') return 'Waiting for WhatsApp QR scan.';
+        if (status === 'starting' || status === 'created') return 'Session is not connected yet.';
+        return 'WhatsApp is inactive. Reconnect before sending messages.';
+      }
       function formatDate(value) {
         if (!value) return '-';
         return new Date(value).toLocaleDateString();
@@ -600,34 +650,47 @@ function loginPage({ config }) {
         <div id="dashboard" class="customer-stack hidden">
           <section class="customer-hero">
             <div class="panel-head">
-              <h2 id="customerName">Dashboard</h2>
+              <div><h2>Overview</h2><p id="customerName">Monitor your WhatsApp API activity and connected sessions.</p></div>
               <div class="actions"><span class="pill" id="customerStatus">trial</span><button class="secondary" id="customerRefreshBtn">Refresh</button></div>
             </div>
             <div class="panel-body">
+              <div class="trial-banner" id="trialBanner"></div>
               <div class="summary">
                 <div class="summary-card"><span>Phones</span><strong id="phoneCount">0</strong></div>
                 <div class="summary-card"><span>Queue</span><strong id="queueCount">0</strong></div>
                 <div class="summary-card"><span>Logs</span><strong id="logCount">0</strong></div>
+                <div class="summary-card"><span>Failed</span><strong id="failedCount">0</strong></div>
+              </div>
+              <div class="webhook-card">
+                <div>
+                  <strong>Webhooks</strong>
+                  <p class="small">Receive POST events for queued, sent, failed, phone status, and incoming messages.</p>
+                </div>
+                <div class="webhook-form">
+                  <input id="webhookUrl" placeholder="https://example.com/mis-api-webhook">
+                  <button class="secondary" id="saveWebhookBtn" type="button">Save webhook</button>
+                </div>
+                <p class="small" id="webhookStatus"></p>
               </div>
               <div id="phoneCards"></div>
             </div>
           </section>
           <div class="dash-grid">
             <section>
-              <div class="panel-head"><h2>Queue Messages</h2><span class="small" id="queueLabel">0 items</span></div>
+              <div class="panel-head"><h2>Message Queue</h2><span class="pill queued" id="queueLabel">0 queued</span></div>
               <div class="panel-body">
                 <table>
                   <thead><tr><th>Status</th><th>To</th><th>Message</th><th>Time</th></tr></thead>
-                  <tbody id="queueRows"><tr><td colspan="4" class="small">Login to load queue.</td></tr></tbody>
+                  <tbody id="queueRows"><tr><td colspan="4" class="empty-row"><strong>Restricted</strong><span>Sign in to load queued messages.</span></td></tr></tbody>
                 </table>
               </div>
             </section>
             <section>
-              <div class="panel-head"><h2>Send Logs</h2><span class="small" id="logLabel">0 items</span></div>
+              <div class="panel-head"><h2>Message Activity</h2><span class="pill" id="logLabel">0 logs</span></div>
               <div class="panel-body">
                 <table>
                   <thead><tr><th>Status</th><th>To</th><th>Message</th><th>Time</th></tr></thead>
-                  <tbody id="logRows"><tr><td colspan="4" class="small">Login to load logs.</td></tr></tbody>
+                  <tbody id="logRows"><tr><td colspan="4" class="empty-row"><strong>Restricted</strong><span>Sign in to load message activity.</span></td></tr></tbody>
                 </table>
               </div>
             </section>
@@ -692,6 +755,7 @@ function loginPage({ config }) {
       document.getElementById('showLoginBtn').addEventListener('click', () => setAuthMode('login'));
       document.getElementById('showSignupBtn').addEventListener('click', () => setAuthMode('signup'));
       document.getElementById('customerRefreshBtn').addEventListener('click', loadDashboard);
+      document.getElementById('saveWebhookBtn').addEventListener('click', saveWebhook);
       document.getElementById('topLogoutBtn').addEventListener('click', logout);
       document.getElementById('adminRefreshBtn').addEventListener('click', loadAdminDashboard);
       document.getElementById('adminCreateBtn').addEventListener('click', createAdminCustomer);
@@ -771,6 +835,7 @@ function loginPage({ config }) {
 
       function logout() {
         sessionToken = '';
+        document.body.classList.remove('is-authenticated');
         sessionStorage.removeItem('mis_api_admin_session');
         localStorage.removeItem('mis_api_session');
         fetch('/v1/auth/logout', { method: 'POST' }).catch(() => {});
@@ -785,6 +850,7 @@ function loginPage({ config }) {
       }
 
       function showCustomerShell() {
+        document.body.classList.add('is-authenticated');
         document.getElementById('loginCard').classList.add('hidden');
         document.getElementById('topLogoutBtn').classList.remove('hidden');
         document.getElementById('publicDetails').classList.add('hidden');
@@ -793,6 +859,7 @@ function loginPage({ config }) {
       }
 
       async function showAdminDashboard() {
+        document.body.classList.add('is-authenticated');
         document.getElementById('loginCard').classList.add('hidden');
         document.getElementById('topLogoutBtn').classList.remove('hidden');
         document.getElementById('publicDetails').classList.add('hidden');
@@ -812,24 +879,31 @@ function loginPage({ config }) {
           return;
         }
         showCustomerShell();
-        document.getElementById('customerName').textContent = me.customer.name;
-        document.getElementById('customerStatus').textContent = me.customer.subscriptionStatus;
+        const queueRows = queue.queue || [];
+        const logRows = logs.messages || [];
+        const failedRows = logRows.filter(item => item.status === 'failed');
+        document.getElementById('customerName').textContent = me.customer.name + ' workspace';
+        document.getElementById('customerStatus').textContent = customerStatusLabel(me.customer);
+        document.getElementById('customerStatus').className = 'pill ' + customerStatusClass(me.customer);
+        document.getElementById('trialBanner').innerHTML = trialBanner(me.customer);
+        document.getElementById('webhookUrl').value = me.customer.webhookUrl || '';
         customerApiKey = me.customer.apiKey || '';
         document.getElementById('phoneCount').textContent = me.phones.length;
-        document.getElementById('queueCount').textContent = (queue.queue || []).length;
-        document.getElementById('logCount').textContent = (logs.messages || []).length;
-        document.getElementById('queueLabel').textContent = (queue.queue || []).length + ' items';
-        document.getElementById('logLabel').textContent = (logs.messages || []).length + ' items';
+        document.getElementById('queueCount').textContent = queueRows.length;
+        document.getElementById('logCount').textContent = logRows.length;
+        document.getElementById('failedCount').textContent = failedRows.length;
+        document.getElementById('queueLabel').textContent = queueRows.filter(item => item.status === 'queued' || item.status === 'sending').length + ' queued';
+        document.getElementById('logLabel').textContent = logRows.length + ' logs';
         document.getElementById('phoneCards').innerHTML = me.phones.length
           ? me.phones.map(phoneCard).join('')
-          : '<p class="small">No phones found.</p>';
+          : '<div class="empty-state"><strong>No WhatsApp numbers</strong><span>Your connected WhatsApp numbers will appear here after signup or admin setup.</span></div>';
         refreshScriptBoxes();
-        document.getElementById('queueRows').innerHTML = (queue.queue || []).length
-          ? queue.queue.map(row).join('')
-          : '<tr><td colspan="4" class="small">No queued messages.</td></tr>';
-        document.getElementById('logRows').innerHTML = (logs.messages || []).length
-          ? logs.messages.map(row).join('')
-          : '<tr><td colspan="4" class="small">No logs yet.</td></tr>';
+        document.getElementById('queueRows').innerHTML = queueRows.length
+          ? queueRows.map(row).join('')
+          : '<tr><td colspan="4" class="empty-row"><strong>No queued messages</strong><span>Messages waiting to be sent will appear here.</span></td></tr>';
+        document.getElementById('logRows').innerHTML = logRows.length
+          ? logRows.map(row).join('')
+          : '<tr><td colspan="4" class="empty-row"><strong>No message activity</strong><span>Sent, failed, and received messages will appear here.</span></td></tr>';
       }
 
       async function fetchJson(url) {
@@ -842,18 +916,48 @@ function loginPage({ config }) {
         const status = String(phone.status || 'created').toLowerCase();
         const connected = status === 'ready';
         const canLink = status === 'unlinked' || status === 'disconnected' || status === 'auth_failure' || status === 'error' || status === 'created';
-        const label = connected ? 'active' : status;
+        const label = connected ? 'connected' : friendlyPhoneStatus(status);
+        const severity = phoneSeverity(status, connected);
         const action = canLink
-          ? '<button class="phone-link" type="button" data-link-phone="' + escapeHtml(phone.id) + '">Link</button>'
-          : '<button class="danger" type="button" data-unlink-phone="' + escapeHtml(phone.id) + '">Unlink</button>';
-        return '<div class="phone-card" id="phoneCard-' + escapeHtml(phone.id) + '">' +
+          ? '<button class="phone-link" type="button" data-link-phone="' + escapeHtml(phone.id) + '">' + escapeHtml(status === 'created' ? 'View QR' : 'Reconnect') + '</button>'
+          : '<button class="danger" type="button" data-unlink-phone="' + escapeHtml(phone.id) + '">Disconnect</button>';
+        return '<div class="phone-card phone-' + escapeHtml(severity) + '" id="phoneCard-' + escapeHtml(phone.id) + '">' +
           '<div class="phone-main"><div><strong>' + escapeHtml(phone.label) + '</strong>' +
-          '<code>' + escapeHtml(phone.id) + '</code></div><div class="phone-actions"><span class="pill ' + escapeHtml(label) + '" id="phoneStatus-' + escapeHtml(phone.id) + '">' + escapeHtml(label) + '</span>' +
+          '<span class="phone-help">' + escapeHtml(phoneStatusHelp(status, connected)) + '</span>' +
+          '<code>' + escapeHtml(phone.id) + '</code></div><div class="phone-actions"><span class="pill ' + escapeHtml(severity) + '" id="phoneStatus-' + escapeHtml(phone.id) + '">' + escapeHtml(label) + '</span>' +
           action + '</div></div>' +
           '<div class="phone-qr" id="phoneQr-' + escapeHtml(phone.id) + '"><div id="phoneQrImage-' + escapeHtml(phone.id) + '"></div><div><strong id="phoneQrTitle-' + escapeHtml(phone.id) + '">Waiting for QR</strong><p class="small" id="phoneQrText-' + escapeHtml(phone.id) + '">Open WhatsApp Linked Devices and scan this QR when it appears.</p></div></div>' +
           '<div class="script-box"><div class="panel-head"><h2>WhatsApp.gs</h2><button class="secondary" type="button" data-copy-whatsapp="' + escapeHtml(phone.id) + '">Copy</button></div>' +
           '<textarea readonly data-whatsapp-script="' + escapeHtml(phone.id) + '"></textarea></div>' +
           '</div>';
+      }
+
+      async function saveWebhook() {
+        const button = document.getElementById('saveWebhookBtn');
+        const status = document.getElementById('webhookStatus');
+        button.disabled = true;
+        button.textContent = 'Saving...';
+        status.textContent = '';
+        const data = await fetchJsonPost('/v1/customer/webhook', {
+          webhookUrl: document.getElementById('webhookUrl').value.trim()
+        });
+        button.disabled = false;
+        button.textContent = 'Save webhook';
+        status.textContent = data.ok ? 'Webhook saved.' : (data.error || 'Could not save webhook.');
+        status.className = 'small ' + (data.ok ? 'success-text' : 'error-text');
+      }
+
+      async function fetchJsonPost(url, payload) {
+        const headers = { 'content-type': 'application/json' };
+        if (sessionToken) {
+          headers['x-session-token'] = sessionToken;
+        }
+        const response = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        });
+        return response.json();
       }
 
       async function restoreCustomerSession() {
@@ -1046,11 +1150,13 @@ function loginPage({ config }) {
       }
 
       function updatePhoneStatus(phoneId, status, ready, qrImage, error) {
-        const label = ready ? 'active' : String(status || 'starting').toLowerCase();
+        const rawStatus = String(status || 'starting').toLowerCase();
+        const label = ready ? 'connected' : friendlyPhoneStatus(rawStatus);
+        const severity = phoneSeverity(rawStatus, ready);
         const pill = document.getElementById('phoneStatus-' + phoneId);
         if (pill) {
           pill.textContent = label;
-          pill.className = 'pill ' + label;
+          pill.className = 'pill ' + severity;
         }
 
         if (ready) {
@@ -1186,12 +1292,25 @@ function loginPage({ config }) {
 
       function row(item) {
         const content = item.message || item.error || item.file?.filename || '';
+        const recipient = item.direction === 'inbound' ? (item.from || '-') : (item.to || '-');
+        const status = item.status || '';
         return '<tr>' +
-          '<td><span class="pill">' + escapeHtml(item.status || '') + '</span></td>' +
-          '<td>' + escapeHtml(item.to || '') + '</td>' +
-          '<td class="message">' + escapeHtml(content) + '</td>' +
+          '<td><span class="pill ' + escapeHtml(status) + '">' + escapeHtml(statusLabel(status)) + '</span></td>' +
+          '<td>' + escapeHtml(recipient) + '</td>' +
+          '<td class="message" title="' + escapeHtml(content) + '">' + escapeHtml(content || '-') + '</td>' +
           '<td class="small">' + escapeHtml(formatDate(item.updatedAt || item.createdAt)) + '</td>' +
           '</tr>';
+      }
+
+      function statusLabel(status) {
+        const labels = {
+          queued: 'Queued',
+          sending: 'Sending',
+          sent: 'Sent',
+          failed: 'Failed',
+          received: 'Received'
+        };
+        return labels[status] || status || '-';
       }
 
       function formatDate(value) {
@@ -1634,7 +1753,7 @@ function connectPage({ phone, status, token, apiKey }) {
         document.getElementById('queueSummary').textContent = waiting + ' waiting';
         document.getElementById('queueRows').innerHTML = rows.length
           ? rows.map(renderRow).join('')
-          : '<tr><td colspan="4" class="small">No queued messages.</td></tr>';
+          : '<tr><td colspan="4" class="empty-row"><strong>No queued messages</strong><span>Messages waiting to be sent will appear here.</span></td></tr>';
       }
 
       async function refreshLogs() {
@@ -1645,17 +1764,30 @@ function connectPage({ phone, status, token, apiKey }) {
         document.getElementById('logSummary').textContent = rows.length + ' sends';
         document.getElementById('logRows').innerHTML = rows.length
           ? rows.map(renderRow).join('')
-          : '<tr><td colspan="4" class="small">No logs yet.</td></tr>';
+          : '<tr><td colspan="4" class="empty-row"><strong>No message activity</strong><span>Sent, failed, and received messages will appear here.</span></td></tr>';
       }
 
       function renderRow(row) {
         const content = row.message || row.error || row.file?.filename || '';
+        const recipient = row.direction === 'inbound' ? (row.from || '-') : (row.to || '-');
+        const status = row.status || '';
         return '<tr>' +
-          '<td><span class="pill ' + escapeHtml(row.status || '') + '">' + escapeHtml(row.status || '') + '</span></td>' +
-          '<td>' + escapeHtml(row.to || '') + '</td>' +
-          '<td class="message">' + escapeHtml(content) + '</td>' +
+          '<td><span class="pill ' + escapeHtml(status) + '">' + escapeHtml(statusLabel(status)) + '</span></td>' +
+          '<td>' + escapeHtml(recipient) + '</td>' +
+          '<td class="message" title="' + escapeHtml(content) + '">' + escapeHtml(content || '-') + '</td>' +
           '<td class="small">' + escapeHtml(formatDate(row.updatedAt || row.createdAt)) + '</td>' +
           '</tr>';
+      }
+
+      function statusLabel(status) {
+        const labels = {
+          queued: 'Queued',
+          sending: 'Sending',
+          sent: 'Sent',
+          failed: 'Failed',
+          received: 'Received'
+        };
+        return labels[status] || status || '-';
       }
 
       function updateLifecycle(status, ready) {
@@ -2835,6 +2967,71 @@ function premiumSaaSStyles() {
       .admin-dashboard {
         grid-column: 1 / -1;
       }
+      .is-authenticated .public-stack,
+      .is-authenticated .login-card {
+        display: none !important;
+      }
+      .is-authenticated .login-grid {
+        display: block;
+      }
+      .trial-banner {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        display: grid;
+        gap: 5px;
+        margin-bottom: 14px;
+        padding: 14px 16px;
+      }
+      .trial-banner strong {
+        color: var(--text);
+        font-size: 15px;
+      }
+      .trial-banner span {
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+      .trial-progress {
+        background: #e2e8f0;
+        border-radius: 999px;
+        height: 7px;
+        margin-top: 6px;
+        overflow: hidden;
+      }
+      .trial-progress i {
+        background: var(--primary);
+        border-radius: inherit;
+        display: block;
+        height: 100%;
+      }
+      .webhook-card {
+        align-items: start;
+        background: #fbfdff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1fr minmax(280px, .9fr);
+        margin: 14px 0;
+        padding: 16px;
+      }
+      .webhook-card strong {
+        color: var(--text);
+        display: block;
+        margin-bottom: 4px;
+      }
+      .webhook-form {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+      .success-text {
+        color: var(--success);
+      }
+      .error-text {
+        color: var(--danger);
+      }
       .customer-hero .panel-head,
       .admin-dashboard .panel-head {
         background: var(--surface);
@@ -2861,6 +3058,22 @@ function premiumSaaSStyles() {
       .phone-card {
         box-shadow: none;
         margin-top: 14px;
+        transition: border-color .18s ease, box-shadow .18s ease;
+      }
+      .phone-card.phone-failed {
+        background: #fff7f7;
+        border-color: #fecaca;
+        box-shadow: 0 1px 2px rgba(220, 38, 38, .08), 0 12px 28px rgba(220, 38, 38, .08);
+      }
+      .phone-card.phone-queued {
+        background: #fffbeb;
+        border-color: #fde68a;
+      }
+      .phone-help {
+        color: var(--text-muted);
+        display: block;
+        font-size: 13px;
+        margin: 4px 0 8px;
       }
       .phone-card code {
         background: var(--surface-muted);
@@ -2892,6 +3105,23 @@ function premiumSaaSStyles() {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+      .empty-row,
+      .empty-state {
+        color: var(--text-muted);
+        padding: 24px !important;
+        text-align: center;
+      }
+      .empty-row strong,
+      .empty-state strong {
+        color: var(--text);
+        display: block;
+        margin-bottom: 4px;
+      }
+      .empty-row span,
+      .empty-state span {
+        display: block;
+        font-size: 13px;
       }
       .panel-body {
         overflow-x: auto;
@@ -2935,6 +3165,10 @@ function premiumSaaSStyles() {
         }
         .section-head {
           display: grid;
+        }
+        .webhook-card,
+        .webhook-form {
+          grid-template-columns: 1fr;
         }
       }
       @media (prefers-reduced-motion: reduce) {

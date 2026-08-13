@@ -34,10 +34,11 @@ const {
   listQueue,
   logMessage,
   nextQueuedMessage,
+  updateCustomer,
   updateQueueMessage,
   verifyConnectToken
 } = require('./store');
-const { getOrStartClient, getRuntimeStatus, restartClient, sendMessage, unlinkClient } = require('./whatsapp-manager');
+const { getOrStartClient, getRuntimeStatus, onWhatsappEvent, restartClient, sendMessage, unlinkClient } = require('./whatsapp-manager');
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -161,6 +162,17 @@ const server = http.createServer(async (request, response) => {
         ok: true,
         customer: publicCustomer(customer),
         phones: listPhones(customer.id)
+      });
+    }
+
+    if (request.method === 'POST' && url.pathname === '/v1/customer/webhook') {
+      const customer = requireSessionCustomer(request);
+      const body = await readJson(request);
+      const webhookUrl = normalizeWebhookUrl(body.webhookUrl || body.url);
+      const updated = updateCustomer(customer.id, { webhookUrl });
+      return sendJson(response, 200, {
+        ok: true,
+        customer: publicCustomer(updated)
       });
     }
 
@@ -373,6 +385,15 @@ const server = http.createServer(async (request, response) => {
         file,
         source: 'api'
       });
+      notifyWebhook(customer, 'message.queued', {
+        queueId: queued.id,
+        phoneId: phone.id,
+        to: queued.to,
+        message: queued.message,
+        file: publicFile(queued.file),
+        status: queued.status,
+        createdAt: queued.createdAt
+      });
       return sendJson(response, 202, {
         ok: true,
         queued: true,
@@ -401,6 +422,15 @@ const server = http.createServer(async (request, response) => {
         to: normalizePhone(body.to),
         message: body.message || '',
         file
+      });
+      notifyWebhook(customer, 'message.queued', {
+        queueId: queued.id,
+        phoneId: phone.id,
+        to: queued.to,
+        message: queued.message,
+        file: publicFile(queued.file),
+        status: queued.status,
+        createdAt: queued.createdAt
       });
       return sendJson(response, 202, { ok: true, queueId: queued.id, status: queued.status });
     }
@@ -555,6 +585,8 @@ function publicCustomer(customer) {
     name: customer.name,
     username: customer.username,
     apiKey: customer.apiKey || '',
+    webhookUrl: customer.webhookUrl || '',
+    webhookEnabled: Boolean(customer.webhookUrl),
     status: customer.status,
     subscriptionStatus: customer.subscriptionStatus,
     trialEndsAt: customer.trialEndsAt,
@@ -617,6 +649,68 @@ function normalizeFile(file) {
   };
 }
 
+function normalizeWebhookUrl(value) {
+  const webhookUrl = String(value || '').trim();
+  if (!webhookUrl) {
+    return '';
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(webhookUrl);
+  } catch {
+    throw error(400, 'Webhook URL must be a valid URL.');
+  }
+
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw error(400, 'Webhook URL must start with http:// or https://.');
+  }
+
+  return parsed.toString();
+}
+
+function publicFile(file) {
+  if (!file) {
+    return null;
+  }
+  return {
+    mimetype: file.mimetype,
+    filename: file.filename
+  };
+}
+
+function notifyWebhook(customer, event, data) {
+  if (!customer?.webhookUrl) {
+    return;
+  }
+
+  const payload = {
+    event,
+    customerId: customer.id,
+    timestamp: new Date().toISOString(),
+    data
+  };
+
+  deliverWebhook(customer.webhookUrl, payload).catch(err => {
+    console.error(`Webhook delivery failed for ${customer.id}: ${err.message}`);
+  });
+}
+
+async function deliverWebhook(webhookUrl, payload) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function processQueue() {
   if (queueProcessing) {
     return;
@@ -653,17 +747,28 @@ async function processQueue() {
       source: 'queue',
       whatsappMessageId: whatsappMessage?.id?._serialized || null
     });
-    updateQueueMessage(item.id, {
+    const updatedQueue = updateQueueMessage(item.id, {
       status: 'sent',
       messageId: log.id,
       error: null
     });
+    notifyWebhook(findCustomerById(item.customerId), 'message.sent', {
+      queueId: item.id,
+      messageId: log.id,
+      phoneId: item.phoneId,
+      to: normalizePhone(item.to),
+      message: item.message,
+      file: publicFile(item.file),
+      status: updatedQueue?.status || 'sent',
+      whatsappMessageId: whatsappMessage?.id?._serialized || null,
+      sentAt: log.createdAt
+    });
   } catch (err) {
-    updateQueueMessage(item.id, {
+    const updatedQueue = updateQueueMessage(item.id, {
       status: 'failed',
       error: err.message
     });
-    logMessage({
+    const log = logMessage({
       customerId: item.customerId,
       phoneId: item.phoneId,
       to: normalizePhone(item.to),
@@ -673,7 +778,47 @@ async function processQueue() {
       source: 'queue',
       error: err.message
     });
+    notifyWebhook(findCustomerById(item.customerId), 'message.failed', {
+      queueId: item.id,
+      messageId: log.id,
+      phoneId: item.phoneId,
+      to: normalizePhone(item.to),
+      message: item.message,
+      file: publicFile(item.file),
+      status: updatedQueue?.status || 'failed',
+      error: err.message,
+      failedAt: log.createdAt
+    });
   } finally {
     queueProcessing = false;
   }
 }
+
+onWhatsappEvent(({ event, payload, timestamp }) => {
+  const customer = findCustomerById(payload.customerId);
+  if (!customer) {
+    return;
+  }
+
+  if (event === 'message.received') {
+    const log = logMessage({
+      customerId: payload.customerId,
+      phoneId: payload.phoneId,
+      from: payload.from,
+      to: '',
+      message: payload.message,
+      status: 'received',
+      source: 'whatsapp',
+      direction: 'inbound',
+      whatsappMessageId: payload.whatsappMessageId
+    });
+    notifyWebhook(customer, event, {
+      ...payload,
+      messageId: log.id,
+      receivedAt: payload.receivedAt || timestamp
+    });
+    return;
+  }
+
+  notifyWebhook(customer, event, payload);
+});
