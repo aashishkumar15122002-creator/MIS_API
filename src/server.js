@@ -192,6 +192,24 @@ const server = http.createServer(async (request, response) => {
       });
     }
 
+    if (request.method === 'POST' && url.pathname === '/v1/customer/phones') {
+      const customer = requireSessionCustomer(request);
+      const body = await readJson(request);
+      const phone = createPhone({
+        customerId: customer.id,
+        label: body.label || 'Main WhatsApp'
+      });
+      getOrStartClient(phone);
+      const state = getRuntimeStatus(phone.id);
+      return sendJson(response, 201, {
+        ok: true,
+        phone,
+        status: state.status,
+        ready: state.ready,
+        qrImage: state.qrImage
+      });
+    }
+
     const customerUnlinkMatch = url.pathname.match(/^\/v1\/customer\/phones\/([^/]+)\/unlink$/);
     if (request.method === 'POST' && customerUnlinkMatch) {
       const customer = requireSessionCustomer(request);

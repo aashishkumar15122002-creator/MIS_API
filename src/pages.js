@@ -651,7 +651,7 @@ function loginPage({ config }) {
           <section class="customer-hero">
             <div class="panel-head">
               <div><h2>Overview</h2><p id="customerName">Monitor your WhatsApp API activity and connected sessions.</p></div>
-              <div class="actions"><span class="pill" id="customerStatus">trial</span><button class="secondary" id="customerRefreshBtn">Refresh</button></div>
+              <div class="actions"><span class="pill" id="customerStatus">trial</span><button id="addPhoneBtn" type="button">Add WhatsApp number</button><button class="secondary" id="customerRefreshBtn">Refresh</button></div>
             </div>
             <div class="panel-body">
               <div class="trial-banner" id="trialBanner"></div>
@@ -754,6 +754,7 @@ function loginPage({ config }) {
       });
       document.getElementById('showLoginBtn').addEventListener('click', () => setAuthMode('login'));
       document.getElementById('showSignupBtn').addEventListener('click', () => setAuthMode('signup'));
+      document.getElementById('addPhoneBtn').addEventListener('click', addPhone);
       document.getElementById('customerRefreshBtn').addEventListener('click', loadDashboard);
       document.getElementById('saveWebhookBtn').addEventListener('click', saveWebhook);
       document.getElementById('topLogoutBtn').addEventListener('click', logout);
@@ -896,7 +897,7 @@ function loginPage({ config }) {
         document.getElementById('logLabel').textContent = logRows.length + ' logs';
         document.getElementById('phoneCards').innerHTML = me.phones.length
           ? me.phones.map(phoneCard).join('')
-          : '<div class="empty-state"><strong>No WhatsApp numbers</strong><span>Your connected WhatsApp numbers will appear here after signup or admin setup.</span></div>';
+          : '<div class="empty-state"><strong>No WhatsApp number linked</strong><span>Click Add WhatsApp number, then scan the QR from WhatsApp > Linked devices.</span><button type="button" data-add-phone>Add WhatsApp number</button></div>';
         refreshScriptBoxes();
         document.getElementById('queueRows').innerHTML = queueRows.length
           ? queueRows.map(row).join('')
@@ -946,6 +947,24 @@ function loginPage({ config }) {
         button.textContent = 'Save webhook';
         status.textContent = data.ok ? 'Webhook saved.' : (data.error || 'Could not save webhook.');
         status.className = 'small ' + (data.ok ? 'success-text' : 'error-text');
+      }
+
+      async function addPhone() {
+        const button = document.getElementById('addPhoneBtn');
+        button.disabled = true;
+        button.textContent = 'Creating...';
+        const data = await fetchJsonPost('/v1/customer/phones', {
+          label: 'Main WhatsApp'
+        });
+        button.disabled = false;
+        button.textContent = 'Add WhatsApp number';
+        if (!data.ok) {
+          alert(data.error || 'Could not create WhatsApp number.');
+          return;
+        }
+        await loadDashboard();
+        await linkPhone(data.phone.id);
+        document.getElementById('phoneCard-' + data.phone.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
 
       async function fetchJsonPost(url, payload) {
@@ -1050,6 +1069,12 @@ function loginPage({ config }) {
         if (authButton) {
           setAuthMode(authButton.getAttribute('data-auth-mode'));
           document.getElementById('loginCard')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+
+        const addPhoneButton = event.target.closest('[data-add-phone]');
+        if (addPhoneButton) {
+          await addPhone();
           return;
         }
 
