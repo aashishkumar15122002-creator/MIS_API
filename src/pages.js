@@ -728,9 +728,10 @@ function loginPage({ config }) {
             <nav class="side-nav" aria-label="Dashboard sections">
               <button class="active" type="button" data-scroll-target="overview"><span class="nav-icon">⌂</span><span class="nav-text">Overview</span></button>
               <button type="button" data-scroll-target="phoneCards"><span class="nav-icon">◉</span><span class="nav-text">WhatsApp QR</span></button>
+              <button type="button" data-scroll-target="subscriptionMain"><span class="nav-icon">◆</span><span class="nav-text">Subscription</span></button>
               <button type="button" data-scroll-target="groupsMain"><span class="nav-icon">☷</span><span class="nav-text">Groups</span></button>
-              <button type="button" data-scroll-target="history"><span class="nav-icon">↻</span><span class="nav-text">Logs</span></button>
-              <button type="button" data-scroll-target="recentMain"><span class="nav-icon">◷</span><span class="nav-text">Recent logs</span></button>
+              <button type="button" data-scroll-target="queueMain"><span class="nav-icon">◷</span><span class="nav-text">Queue</span></button>
+              <button type="button" data-scroll-target="logsMain"><span class="nav-icon">↻</span><span class="nav-text">Logs</span></button>
               <button type="button" data-scroll-target="sheetApiMain"><span class="nav-icon">⌘</span><span class="nav-text">Sheet API</span></button>
               <button type="button" data-scroll-target="testMessageMain"><span class="nav-icon">✦</span><span class="nav-text">Test message</span></button>
             </nav>
@@ -744,16 +745,7 @@ function loginPage({ config }) {
                   <span>${escapeHtml(payment.planName)}</span>
                   <b>${escapeHtml(payment.monthlyPrice)}</b>
                 </div>
-                <a class="side-link" href="mailto:${escapeHtml(payment.salesEmail)}">Upgrade / support</a>
-              </div>
-            </section>
-            <section class="side-card side-tip">
-              <div class="side-card-icon">✦</div>
-              <div class="side-reveal">
-                <span class="side-label">Quick test</span>
-                <strong>Send test message</strong>
-                <p>Try one message from the dashboard before using Sheets.</p>
-                <button class="side-link" type="button" data-scroll-target="testMessageMain">Open test</button>
+                <button class="side-link" type="button" data-scroll-target="subscriptionMain">View details</button>
               </div>
             </section>
           </aside>
@@ -786,6 +778,24 @@ function loginPage({ config }) {
               <div id="phoneCards"></div>
             </div>
           </section>
+          <section id="subscriptionMain" class="main-card dashboard-panel hidden">
+            <div class="panel-head">
+              <div><h2>Subscription Details</h2><p>Your current trial, plan, and upgrade details.</p></div>
+              <span class="pill" id="subPlanStatus">Free trial</span>
+            </div>
+            <div class="panel-body">
+              <div class="subscription-detail-grid">
+                <div class="subscription-detail-card"><span>Status</span><strong id="subStatusText">Free trial</strong><p id="subTrialText">Loading subscription...</p></div>
+                <div class="subscription-detail-card"><span>Plan</span><strong>${escapeHtml(payment.planName)}</strong><p>${escapeHtml(payment.monthlyPrice)} / month</p></div>
+                <div class="subscription-detail-card"><span>Trial ends</span><strong id="subTrialEnds">-</strong><p>Upgrade before expiry to keep sending active.</p></div>
+                <div class="subscription-detail-card"><span>Support</span><strong>${escapeHtml(payment.salesEmail)}</strong><p>Contact for payment or activation.</p></div>
+              </div>
+              <div class="subscription-actions">
+                <a class="button" href="mailto:${escapeHtml(payment.salesEmail)}">Upgrade / support</a>
+                <button class="secondary" type="button" data-scroll-target="sheetApiMain">Open Sheet API code</button>
+              </div>
+            </div>
+          </section>
           <section id="groupsMain" class="main-card dashboard-panel hidden">
               <div class="panel-head">
                 <div><h2>WhatsApp Groups</h2><p>Copy group IDs and use them as the API or sheet recipient.</p></div>
@@ -794,15 +804,6 @@ function loginPage({ config }) {
               <div class="panel-body">
                 <p class="small" id="mainGroupsState">Connect WhatsApp to load groups.</p>
                 <div class="main-group-list" id="mainGroupsList"></div>
-              </div>
-            </section>
-            <section id="recentMain" class="main-card dashboard-panel hidden">
-              <div class="panel-head">
-                <div><h2>Recent Logs</h2><p>Latest sent, failed, and received message events.</p></div>
-                <span class="pill" id="mainRecentCount">0 logs</span>
-              </div>
-              <div class="panel-body">
-                <div class="main-recent-list" id="mainRecentLogs"></div>
               </div>
             </section>
             <section id="sheetApiMain" class="main-card dashboard-panel hidden">
@@ -828,8 +829,7 @@ function loginPage({ config }) {
                 <p class="small" id="testMessageResult"></p>
               </div>
             </section>
-          <div class="dash-grid dashboard-panel hidden" id="history">
-            <section>
+            <section id="queueMain" class="main-card dashboard-panel hidden">
               <div class="panel-head"><h2>Current Queue</h2><span class="pill queued" id="queueLabel">0 queued</span></div>
               <div class="panel-body">
                 <table>
@@ -838,7 +838,7 @@ function loginPage({ config }) {
                 </table>
               </div>
             </section>
-            <section>
+            <section id="logsMain" class="main-card dashboard-panel hidden">
               <div class="panel-head"><h2>Message Logs</h2><span class="pill" id="logLabel">0 logs</span></div>
               <div class="panel-body">
                 <table>
@@ -847,7 +847,6 @@ function loginPage({ config }) {
                 </table>
               </div>
             </section>
-          </div>
           </div>
         </div>
         <div id="adminDashboard" class="admin-dashboard hidden">
@@ -898,7 +897,7 @@ function loginPage({ config }) {
       let sessionToken = '';
       localStorage.removeItem('mis_api_session');
       restoreCustomerSession();
-      const dashboardPanelTargets = new Set(['overview', 'phoneCards', 'groupsMain', 'history', 'recentMain', 'sheetApiMain', 'testMessageMain']);
+      const dashboardPanelTargets = new Set(['overview', 'phoneCards', 'subscriptionMain', 'groupsMain', 'queueMain', 'logsMain', 'sheetApiMain', 'testMessageMain']);
       document.getElementById('loginForm').addEventListener('submit', async event => {
         event.preventDefault();
         await login();
@@ -1080,6 +1079,7 @@ function loginPage({ config }) {
         document.getElementById('dashboardNotice').className = 'dashboard-notice';
         customerApiKey = me.customer.apiKey || '';
         renderSidePanel(me.customer, me.phones || [], activeQueueRows, logRows);
+        renderSubscriptionPanel(me.customer);
         document.getElementById('phoneCount').textContent = me.phones.length;
         document.getElementById('queueCount').textContent = activeQueueRows.length;
         document.getElementById('logCount').textContent = logRows.length;
@@ -1098,7 +1098,6 @@ function loginPage({ config }) {
         document.getElementById('logRows').innerHTML = logRows.length
           ? logRows.map(row).join('')
           : '<tr><td colspan="4" class="empty-row"><strong>No message activity</strong><span>Sent, failed, and received messages will appear here.</span></td></tr>';
-        renderMainRecentLogs(logRows);
         loadGroupsPanel();
       }
 
@@ -1130,6 +1129,14 @@ function loginPage({ config }) {
           return 'Trial expired. Activate subscription to continue sending.';
         }
         return left + ' day' + (left === 1 ? '' : 's') + ' left in your free trial.';
+      }
+
+      function renderSubscriptionPanel(customer) {
+        document.getElementById('subPlanStatus').textContent = customerStatusLabel(customer);
+        document.getElementById('subPlanStatus').className = 'pill ' + customerStatusClass(customer);
+        document.getElementById('subStatusText').textContent = customerStatusLabel(customer);
+        document.getElementById('subTrialText').textContent = subscriptionSummary(customer);
+        document.getElementById('subTrialEnds').textContent = formatDate(customer.trialEndsAt);
       }
 
       async function loadGroupsPanel() {
@@ -1177,25 +1184,6 @@ function loginPage({ config }) {
           '<span>' + escapeHtml(meta || 'WhatsApp group') + '</span>' +
           '<code>' + escapeHtml(group.id) + '</code></div>' +
           '<button class="secondary" type="button" data-copy-group="' + escapeHtml(group.id) + '">Copy group ID</button>' +
-          '</div>';
-      }
-
-      function renderMainRecentLogs(logRows) {
-        const recentRows = logRows.slice(0, 12);
-        document.getElementById('mainRecentCount').textContent = recentRows.length + ' recent';
-        document.getElementById('mainRecentLogs').innerHTML = recentRows.length
-          ? recentRows.map(mainRecentItem).join('')
-          : '<div class="empty-state"><strong>No recent logs</strong><span>Message activity will appear here after sends or incoming messages.</span></div>';
-      }
-
-      function mainRecentItem(item) {
-        const content = item.message || item.error || item.file?.filename || 'Message';
-        const recipient = item.direction === 'inbound' ? (item.from || '-') : (item.to || '-');
-        const status = item.status || '';
-        return '<div class="main-recent-item">' +
-          '<span class="pill ' + escapeHtml(status) + '">' + escapeHtml(statusLabel(status)) + '</span>' +
-          '<div><strong>' + escapeHtml(recipient) + '</strong><p>' + escapeHtml(content) + '</p></div>' +
-          '<time>' + escapeHtml(formatDate(item.updatedAt || item.createdAt)) + '</time>' +
           '</div>';
       }
 
@@ -1283,7 +1271,7 @@ function loginPage({ config }) {
           '<code>' + escapeHtml(phone.id) + '</code></div><div class="phone-actions"><span class="pill ' + escapeHtml(severity) + '" id="phoneStatus-' + escapeHtml(phone.id) + '">' + escapeHtml(label) + '</span>' +
           qrAction + disconnectAction + '</div></div>' +
           '<div class="phone-qr" id="phoneQr-' + escapeHtml(phone.id) + '"><div id="phoneQrImage-' + escapeHtml(phone.id) + '"></div><div><strong id="phoneQrTitle-' + escapeHtml(phone.id) + '">Waiting for QR</strong><p class="small" id="phoneQrText-' + escapeHtml(phone.id) + '">Open WhatsApp Linked Devices and scan this QR when it appears.</p></div></div>' +
-          '<div class="script-box"><div class="panel-head"><h2>WhatsApp.gs</h2><button class="secondary" type="button" data-copy-whatsapp="' + escapeHtml(phone.id) + '">Copy</button></div>' +
+          '<div class="script-box"><div class="panel-head"><h2>WhatsApp.gs</h2><span class="small">Copy from Sheet API tab</span></div>' +
           '<textarea readonly data-whatsapp-script="' + escapeHtml(phone.id) + '"></textarea></div>' +
           '</div>';
       }
@@ -1489,19 +1477,6 @@ function loginPage({ config }) {
           return;
         }
 
-        const copyButton = event.target.closest('[data-copy-whatsapp]');
-        if (copyButton) {
-          const phoneId = copyButton.getAttribute('data-copy-whatsapp');
-          const box = document.querySelector('[data-whatsapp-script="' + cssEscape(phoneId) + '"]');
-          if (!box) return;
-          await copyText(box.value);
-          copyButton.textContent = 'Copied';
-          setTimeout(() => {
-            copyButton.textContent = 'Copy';
-          }, 1200);
-          return;
-        }
-
         const button = event.target.closest('[data-unlink-phone]');
         if (!button) {
           return;
@@ -1605,7 +1580,7 @@ function loginPage({ config }) {
         }
 
         if (ready) {
-          setPhoneQrState(phoneId, null, 'Active', 'WhatsApp is connected. API sending is ready.');
+          setPhoneConnectedState(phoneId);
           return;
         }
 
@@ -1626,9 +1601,25 @@ function loginPage({ config }) {
           return;
         }
         panel.classList.add('active');
+        panel.classList.remove('connected');
         image.innerHTML = qrImage ? '<img src="' + qrImage + '" alt="WhatsApp QR code">' : '';
         heading.textContent = title;
         body.textContent = text;
+      }
+
+      function setPhoneConnectedState(phoneId) {
+        const panel = document.getElementById('phoneQr-' + phoneId);
+        const image = document.getElementById('phoneQrImage-' + phoneId);
+        const heading = document.getElementById('phoneQrTitle-' + phoneId);
+        const body = document.getElementById('phoneQrText-' + phoneId);
+        if (!panel || !image || !heading || !body) {
+          return;
+        }
+        panel.classList.add('active');
+        panel.classList.add('connected');
+        image.innerHTML = '<div class="wa-session-icon">WA</div>';
+        heading.textContent = 'WhatsApp Web active';
+        body.innerHTML = 'This device is linked and ready. API messages will send through this WhatsApp session.<br><span class="wa-session-status">Connected now</span>';
       }
 
       function refreshScriptBoxes() {
@@ -3768,6 +3759,38 @@ function premiumSaaSStyles() {
         gap: 12px;
         grid-template-columns: minmax(220px, .9fr) minmax(260px, 1.2fr) auto;
       }
+      .subscription-detail-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .subscription-detail-card {
+        background:
+          radial-gradient(circle at top right, rgba(34, 197, 94, .12), transparent 160px),
+          #fbfdff;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 16px;
+      }
+      .subscription-detail-card span,
+      .subscription-detail-card p {
+        color: var(--text-muted);
+        display: block;
+        font-size: 13px;
+      }
+      .subscription-detail-card strong {
+        color: var(--text);
+        display: block;
+        font-size: 17px;
+        margin: 6px 0;
+        overflow-wrap: anywhere;
+      }
+      .subscription-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+      }
       .customer-dashboard {
         gap: 18px;
         grid-template-columns: 78px minmax(0, 1fr);
@@ -3921,7 +3944,7 @@ function premiumSaaSStyles() {
         width: 100%;
       }
       .is-customer .portal-top {
-        margin: 0 0 18px;
+        display: none;
       }
       .is-customer .customer-dashboard {
         display: block;
@@ -3942,6 +3965,71 @@ function premiumSaaSStyles() {
       .is-customer .customer-stack {
         display: grid;
         gap: 14px;
+      }
+      .wa-session-card {
+        align-items: center;
+        background:
+          radial-gradient(circle at top right, rgba(34, 197, 94, .16), transparent 240px),
+          linear-gradient(135deg, #0b141a, #123f35);
+        border-radius: 18px;
+        color: #fff;
+        display: grid;
+        gap: 18px;
+        grid-template-columns: auto 1fr;
+        padding: 22px;
+        text-align: left;
+      }
+      .wa-session-icon {
+        align-items: center;
+        background: #25d366;
+        border-radius: 22px;
+        box-shadow: 0 18px 42px rgba(37, 211, 102, .28);
+        color: #052e16;
+        display: grid;
+        font-size: 22px;
+        font-weight: 950;
+        height: 72px;
+        place-items: center;
+        width: 72px;
+      }
+      .wa-session-card strong {
+        color: #fff;
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      .wa-session-card p {
+        color: rgba(255,255,255,.72);
+        margin: 0;
+      }
+      .wa-session-status {
+        align-items: center;
+        color: #bbf7d0;
+        display: inline-flex;
+        font-size: 13px;
+        font-weight: 850;
+        gap: 7px;
+        margin-top: 12px;
+      }
+      .wa-session-status:before {
+        background: #25d366;
+        border-radius: 999px;
+        content: "";
+        height: 9px;
+        width: 9px;
+      }
+      .phone-qr.connected {
+        background:
+          radial-gradient(circle at top right, rgba(34, 197, 94, .14), transparent 260px),
+          linear-gradient(135deg, #0b141a, #123f35);
+        border: 0;
+        color: #fff;
+      }
+      .phone-qr.connected strong {
+        color: #fff;
+        font-size: 22px;
+      }
+      .phone-qr.connected p {
+        color: rgba(255,255,255,.72);
       }
       .is-authenticated .public-stack,
       .is-authenticated .login-card {
