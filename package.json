@@ -1,0 +1,20 @@
+{
+  "name": "mis-api-qr-whatsapp-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MIS_api free-first QR scan WhatsApp API MVP",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "create-customer": "node scripts/create-customer.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.18",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.33.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
