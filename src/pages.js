@@ -918,14 +918,15 @@ function loginPage({ config }) {
         const canLink = status === 'unlinked' || status === 'disconnected' || status === 'auth_failure' || status === 'error' || status === 'created';
         const label = connected ? 'connected' : friendlyPhoneStatus(status);
         const severity = phoneSeverity(status, connected);
-        const action = canLink
-          ? '<button class="phone-link" type="button" data-link-phone="' + escapeHtml(phone.id) + '">' + escapeHtml(status === 'created' ? 'View QR' : 'Reconnect') + '</button>'
-          : '<button class="danger" type="button" data-unlink-phone="' + escapeHtml(phone.id) + '">Disconnect</button>';
+        const qrAction = '<button class="phone-link" type="button" data-link-phone="' + escapeHtml(phone.id) + '">' + escapeHtml(connected ? 'QR / Reconnect' : (status === 'created' ? 'View QR' : 'Reconnect')) + '</button>';
+        const disconnectAction = connected
+          ? '<button class="danger" type="button" data-unlink-phone="' + escapeHtml(phone.id) + '">Disconnect</button>'
+          : '';
         return '<div class="phone-card phone-' + escapeHtml(severity) + '" id="phoneCard-' + escapeHtml(phone.id) + '">' +
           '<div class="phone-main"><div><strong>' + escapeHtml(phone.label) + '</strong>' +
           '<span class="phone-help">' + escapeHtml(phoneStatusHelp(status, connected)) + '</span>' +
           '<code>' + escapeHtml(phone.id) + '</code></div><div class="phone-actions"><span class="pill ' + escapeHtml(severity) + '" id="phoneStatus-' + escapeHtml(phone.id) + '">' + escapeHtml(label) + '</span>' +
-          action + '</div></div>' +
+          qrAction + disconnectAction + '</div></div>' +
           '<div class="phone-qr" id="phoneQr-' + escapeHtml(phone.id) + '"><div id="phoneQrImage-' + escapeHtml(phone.id) + '"></div><div><strong id="phoneQrTitle-' + escapeHtml(phone.id) + '">Waiting for QR</strong><p class="small" id="phoneQrText-' + escapeHtml(phone.id) + '">Open WhatsApp Linked Devices and scan this QR when it appears.</p></div></div>' +
           '<div class="script-box"><div class="panel-head"><h2>WhatsApp.gs</h2><button class="secondary" type="button" data-copy-whatsapp="' + escapeHtml(phone.id) + '">Copy</button></div>' +
           '<textarea readonly data-whatsapp-script="' + escapeHtml(phone.id) + '"></textarea></div>' +
