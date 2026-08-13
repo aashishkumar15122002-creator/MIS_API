@@ -655,6 +655,7 @@ function loginPage({ config }) {
             </div>
             <div class="panel-body">
               <div class="trial-banner" id="trialBanner"></div>
+              <p class="dashboard-notice" id="dashboardNotice"></p>
               <div class="summary">
                 <div class="summary-card"><span>Phones</span><strong id="phoneCount">0</strong></div>
                 <div class="summary-card"><span>Queue</span><strong id="queueCount">0</strong></div>
@@ -951,20 +952,32 @@ function loginPage({ config }) {
 
       async function addPhone() {
         const button = document.getElementById('addPhoneBtn');
+        const notice = document.getElementById('dashboardNotice');
         button.disabled = true;
         button.textContent = 'Creating...';
-        const data = await fetchJsonPost('/v1/customer/phones', {
-          label: 'Main WhatsApp'
-        });
-        button.disabled = false;
-        button.textContent = 'Add WhatsApp number';
-        if (!data.ok) {
-          alert(data.error || 'Could not create WhatsApp number.');
-          return;
+        notice.textContent = 'Creating WhatsApp number...';
+        notice.className = 'dashboard-notice';
+        try {
+          const data = await fetchJsonPost('/v1/customer/phones', {
+            label: 'Main WhatsApp'
+          });
+          if (!data.ok || !data.phone?.id) {
+            throw new Error(data.error || 'Could not create WhatsApp number.');
+          }
+
+          document.getElementById('phoneCards').innerHTML = phoneCard(data.phone);
+          document.getElementById('phoneCount').textContent = '1';
+          refreshScriptBoxes();
+          notice.textContent = 'WhatsApp number created. Opening QR scanner...';
+          await linkPhone(data.phone.id);
+          document.getElementById('phoneCard-' + data.phone.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (error) {
+          notice.textContent = error.message || 'Could not create WhatsApp number.';
+          notice.className = 'dashboard-notice error-text';
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Add WhatsApp number';
         }
-        await loadDashboard();
-        await linkPhone(data.phone.id);
-        document.getElementById('phoneCard-' + data.phone.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
 
       async function fetchJsonPost(url, payload) {
@@ -3030,6 +3043,17 @@ function premiumSaaSStyles() {
         border-radius: inherit;
         display: block;
         height: 100%;
+      }
+      .dashboard-notice {
+        color: var(--text-muted);
+        font-size: 13px;
+        margin: -4px 0 12px;
+      }
+      .dashboard-notice:not(:empty) {
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 10px 12px;
       }
       .webhook-card {
         align-items: start;
