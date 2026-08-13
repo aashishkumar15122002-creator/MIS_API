@@ -651,46 +651,58 @@ function loginPage({ config }) {
           <aside class="side-panel" aria-label="Customer tools">
             <div class="side-profile">
               <div class="side-avatar">WA</div>
-              <div>
+              <div class="side-reveal">
                 <strong id="sideCustomerName">Workspace</strong>
                 <span id="sideCustomerMeta">WhatsApp API console</span>
               </div>
             </div>
             <nav class="side-nav" aria-label="Dashboard sections">
-              <button type="button" data-scroll-target="overview">Overview</button>
-              <button type="button" data-scroll-target="phoneCards">WhatsApp QR</button>
-              <button type="button" data-scroll-target="sideGroupsCard">Groups</button>
-              <button type="button" data-scroll-target="history">Logs</button>
+              <button type="button" data-scroll-target="overview"><span class="nav-icon">⌂</span><span class="nav-text">Overview</span></button>
+              <button type="button" data-scroll-target="phoneCards"><span class="nav-icon">◉</span><span class="nav-text">WhatsApp QR</span></button>
+              <button type="button" data-scroll-target="sideGroupsCard"><span class="nav-icon">☷</span><span class="nav-text">Groups</span></button>
+              <button type="button" data-scroll-target="history"><span class="nav-icon">↻</span><span class="nav-text">Logs</span></button>
             </nav>
-            <section class="side-card side-subscription" id="sideSubscriptionCard">
-              <span class="side-label">Subscription</span>
-              <strong id="sideSubscriptionStatus">Free trial</strong>
-              <p id="sideTrialText">Loading plan details...</p>
-              <div class="side-price">
-                <span>${escapeHtml(payment.planName)}</span>
-                <b>${escapeHtml(payment.monthlyPrice)}</b>
+            <section class="side-card side-subscription" id="sideSubscriptionCard" data-icon="◆">
+              <div class="side-card-icon">◆</div>
+              <div class="side-reveal">
+                <span class="side-label">Subscription</span>
+                <strong id="sideSubscriptionStatus">Free trial</strong>
+                <p id="sideTrialText">Loading plan details...</p>
+                <div class="side-price">
+                  <span>${escapeHtml(payment.planName)}</span>
+                  <b>${escapeHtml(payment.monthlyPrice)}</b>
+                </div>
+                <a class="side-link" href="mailto:${escapeHtml(payment.salesEmail)}">Upgrade / support</a>
               </div>
-              <a class="side-link" href="mailto:${escapeHtml(payment.salesEmail)}">Upgrade / support</a>
             </section>
             <section class="side-card" id="sideGroupsCard">
-              <div class="side-card-head">
-                <div>
-                  <span class="side-label">WhatsApp Groups</span>
-                  <strong id="sideGroupCount">0 groups</strong>
+              <div class="side-card-icon">☷</div>
+              <div class="side-reveal">
+                <div class="side-card-head">
+                  <div>
+                    <span class="side-label">WhatsApp Groups</span>
+                    <strong id="sideGroupCount">0 groups</strong>
+                  </div>
+                  <button class="mini-button" type="button" id="refreshGroupsBtn">Refresh</button>
                 </div>
-                <button class="mini-button" type="button" id="refreshGroupsBtn">Refresh</button>
+                <p class="side-muted" id="groupsState">Connect WhatsApp to load groups.</p>
+                <div class="group-list" id="groupsList"></div>
               </div>
-              <p class="side-muted" id="groupsState">Connect WhatsApp to load groups.</p>
-              <div class="group-list" id="groupsList"></div>
             </section>
             <section class="side-card">
-              <span class="side-label">Recent history</span>
-              <strong id="sideLogCount">0 messages</strong>
-              <div class="side-log-list" id="sideRecentLogs"></div>
+              <div class="side-card-icon">↻</div>
+              <div class="side-reveal">
+                <span class="side-label">Recent history</span>
+                <strong id="sideLogCount">0 messages</strong>
+                <div class="side-log-list" id="sideRecentLogs"></div>
+              </div>
             </section>
             <section class="side-card side-tip">
-              <span class="side-label">Send target</span>
-              <p>Use a phone number like <code>919876543210</code> or copy a group id ending with <code>@g.us</code>.</p>
+              <div class="side-card-icon">✦</div>
+              <div class="side-reveal">
+                <span class="side-label">Send target</span>
+                <p>Use a phone number like <code>919876543210</code> or copy a group id ending with <code>@g.us</code>.</p>
+              </div>
             </section>
           </aside>
           <div class="customer-stack">
@@ -3450,6 +3462,131 @@ function premiumSaaSStyles() {
         font-family: var(--mono);
         padding: 2px 5px;
       }
+      .customer-dashboard {
+        gap: 18px;
+        grid-template-columns: 78px minmax(0, 1fr);
+      }
+      .side-panel {
+        background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,250,252,.94));
+        border: 1px solid rgba(203, 213, 225, .8);
+        border-radius: 24px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, .14);
+        overflow: hidden;
+        padding: 10px;
+        transition: width .22s ease, box-shadow .22s ease, transform .22s ease;
+        width: 78px;
+        z-index: 5;
+      }
+      .side-panel:hover,
+      .side-panel:focus-within {
+        box-shadow: 0 30px 80px rgba(15, 23, 42, .2);
+        transform: translateY(-1px);
+        width: 336px;
+      }
+      .side-reveal,
+      .nav-text {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .16s ease .06s;
+        white-space: nowrap;
+      }
+      .side-panel:hover .side-reveal,
+      .side-panel:focus-within .side-reveal,
+      .side-panel:hover .nav-text,
+      .side-panel:focus-within .nav-text {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .side-profile,
+      .side-card {
+        border-radius: 18px;
+        box-shadow: none;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 42px 1fr;
+        min-height: 58px;
+        padding: 8px;
+      }
+      .side-profile {
+        background:
+          radial-gradient(circle at 32px 24px, rgba(45, 212, 191, .48), transparent 74px),
+          linear-gradient(135deg, #0f172a, #115e59);
+      }
+      .side-avatar,
+      .side-card-icon,
+      .nav-icon {
+        align-items: center;
+        border-radius: 14px;
+        display: grid;
+        flex: 0 0 auto;
+        font-weight: 950;
+        height: 42px;
+        place-items: center;
+        width: 42px;
+      }
+      .side-avatar {
+        height: 42px;
+        width: 42px;
+      }
+      .side-card-icon,
+      .nav-icon {
+        background: linear-gradient(135deg, #ecfdf5, #dff8ff);
+        border: 1px solid rgba(20, 184, 166, .2);
+        color: #0f766e;
+      }
+      .side-card {
+        background: rgba(255, 255, 255, .9);
+        border-color: rgba(226, 232, 240, .92);
+      }
+      .side-card:hover {
+        background: #ffffff;
+        border-color: rgba(20, 184, 166, .25);
+      }
+      .side-nav {
+        background: transparent;
+        border: 0;
+        padding: 0;
+      }
+      .side-nav button {
+        align-items: center;
+        display: flex;
+        gap: 11px;
+        min-height: 46px;
+        overflow: hidden;
+        padding: 0;
+      }
+      .side-nav button:hover {
+        background: linear-gradient(135deg, #ecfdf5, #eff6ff);
+      }
+      .side-nav button:hover .nav-icon {
+        background: linear-gradient(135deg, #14b8a6, #22c55e);
+        color: #fff;
+      }
+      .side-panel:not(:hover):not(:focus-within) .side-reveal {
+        height: 0;
+        overflow: hidden;
+        width: 0;
+      }
+      .side-panel:not(:hover):not(:focus-within) .side-card,
+      .side-panel:not(:hover):not(:focus-within) .side-profile {
+        grid-template-columns: 42px;
+        justify-content: center;
+      }
+      .side-panel:not(:hover):not(:focus-within) .side-nav button {
+        justify-content: center;
+      }
+      .side-panel:hover .side-card,
+      .side-panel:focus-within .side-card,
+      .side-panel:hover .side-profile,
+      .side-panel:focus-within .side-profile {
+        padding: 12px;
+      }
+      .side-panel:hover .side-subscription,
+      .side-panel:focus-within .side-subscription {
+        background:
+          radial-gradient(circle at top right, rgba(34, 197, 94, .16), transparent 160px),
+          #ffffff;
+      }
       .is-authenticated .public-stack,
       .is-authenticated .login-card {
         display: none !important;
@@ -3626,6 +3763,25 @@ function premiumSaaSStyles() {
         }
         .side-panel {
           position: static;
+          width: auto;
+        }
+        .side-reveal,
+        .nav-text {
+          opacity: 1;
+          pointer-events: auto;
+          white-space: normal;
+        }
+        .side-panel:not(:hover):not(:focus-within) .side-reveal {
+          height: auto;
+          overflow: visible;
+          width: auto;
+        }
+        .side-panel:not(:hover):not(:focus-within) .side-card,
+        .side-panel:not(:hover):not(:focus-within) .side-profile,
+        .side-profile,
+        .side-card {
+          grid-template-columns: 42px minmax(0, 1fr);
+          justify-content: stretch;
         }
         .login-grid,
         .public-hero,
