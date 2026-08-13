@@ -39,7 +39,7 @@ const {
   updateQueueMessage,
   verifyConnectToken
 } = require('./store');
-const { getOrStartClient, getRuntimeStatus, onWhatsappEvent, restartClient, sendMessage, unlinkClient } = require('./whatsapp-manager');
+const { getOrStartClient, getRuntimeStatus, onWhatsappEvent, reconnectClient, restartClient, sendMessage, unlinkClient } = require('./whatsapp-manager');
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -243,7 +243,7 @@ const server = http.createServer(async (request, response) => {
         throw error(404, 'Phone not found.');
       }
 
-      getOrStartClient(phone);
+      await reconnectClient(phone);
       const state = getRuntimeStatus(phone.id);
       return sendJson(response, 202, {
         ok: true,
@@ -384,7 +384,7 @@ const server = http.createServer(async (request, response) => {
       const queued = enqueueMessage({
         customerId: customer.id,
         phoneId: phone.id,
-        to: normalizePhone(body.to),
+        to: normalizeRecipient(body.to),
         message: body.message || '',
         file,
         source: 'api'
@@ -423,7 +423,7 @@ const server = http.createServer(async (request, response) => {
       const queued = enqueueMessage({
         customerId: customer.id,
         phoneId: phone.id,
-        to: normalizePhone(body.to),
+        to: normalizeRecipient(body.to),
         message: body.message || '',
         file
       });
@@ -633,6 +633,17 @@ function normalizePhone(value) {
   return String(value || '').replace(/[^\d]/g, '');
 }
 
+function normalizeRecipient(value) {
+  const recipient = String(value || '').trim().toLowerCase();
+  if (/^\d+(?:-\d+)?@g\.us$/i.test(recipient)) {
+    return recipient;
+  }
+  if (/^\d+@s\.whatsapp\.net$/i.test(recipient)) {
+    return recipient.replace(/@s\.whatsapp\.net$/i, '');
+  }
+  return normalizePhone(recipient);
+}
+
 function normalizeFile(file) {
   if (!file) {
     return null;
@@ -744,7 +755,7 @@ async function processQueue() {
     const log = logMessage({
       customerId: item.customerId,
       phoneId: item.phoneId,
-      to: normalizePhone(item.to),
+      to: normalizeRecipient(item.to),
       message: item.message,
       file: item.file,
       status: 'sent',
@@ -760,7 +771,7 @@ async function processQueue() {
       queueId: item.id,
       messageId: log.id,
       phoneId: item.phoneId,
-      to: normalizePhone(item.to),
+      to: normalizeRecipient(item.to),
       message: item.message,
       file: publicFile(item.file),
       status: updatedQueue?.status || 'sent',
@@ -775,7 +786,7 @@ async function processQueue() {
     const log = logMessage({
       customerId: item.customerId,
       phoneId: item.phoneId,
-      to: normalizePhone(item.to),
+      to: normalizeRecipient(item.to),
       message: item.message,
       file: item.file,
       status: 'failed',
@@ -786,7 +797,7 @@ async function processQueue() {
       queueId: item.id,
       messageId: log.id,
       phoneId: item.phoneId,
-      to: normalizePhone(item.to),
+      to: normalizeRecipient(item.to),
       message: item.message,
       file: publicFile(item.file),
       status: updatedQueue?.status || 'failed',

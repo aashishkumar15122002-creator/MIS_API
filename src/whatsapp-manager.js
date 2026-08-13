@@ -202,12 +202,43 @@ async function sendMessage(phone, to, { message, file } = {}) {
     throw new Error('WhatsApp phone is not ready. Scan QR first.');
   }
 
-  const jid = `${normalizePhone(to)}@s.whatsapp.net`;
+  const jid = recipientJid(to);
   if (file?.data && file?.mimetype) {
     return socket.sendMessage(jid, mediaPayload(file, message));
   }
 
   return socket.sendMessage(jid, { text: String(message || '') });
+}
+
+async function reconnectClient(phone) {
+  const state = stateFor(phone.id);
+  const runtimeStatus = String(state.status || '').toLowerCase();
+  const storedStatus = String(phone.status || '').toLowerCase();
+  const shouldResetAuth = [runtimeStatus, storedStatus].some(status => status === 'unlinked' || status === 'auth_failure');
+
+  if (shouldResetAuth) {
+    const current = clients.get(phone.id);
+    if (current?.socket) {
+      try {
+        current.socket.end(new Error('Session reset for new QR.'));
+      } catch {
+        // The socket may already be closed.
+      }
+    }
+
+    clients.delete(phone.id);
+    fs.rmSync(authPathFor(phone.id), { recursive: true, force: true });
+    setRuntime(phone.id, {
+      qr: null,
+      qrImage: null,
+      status: 'starting',
+      ready: false,
+      error: null
+    });
+    updatePhone(phone.id, { status: 'starting' });
+  }
+
+  return getOrStartClient(phone);
 }
 
 async function restartClient(phone) {
@@ -323,7 +354,30 @@ function normalizePhone(value) {
 }
 
 function normalizeJid(value) {
-  return String(value || '').split('@')[0].replace(/[^\d]/g, '');
+  const jid = String(value || '').trim().toLowerCase();
+  if (isGroupJid(jid)) {
+    return jid;
+  }
+  return jid.split('@')[0].replace(/[^\d]/g, '');
+}
+
+function recipientJid(value) {
+  const recipient = String(value || '').trim().toLowerCase();
+  if (isGroupJid(recipient)) {
+    return recipient;
+  }
+  if (/^\d+@s\.whatsapp\.net$/.test(recipient)) {
+    return recipient;
+  }
+  const phone = normalizePhone(recipient);
+  if (!phone) {
+    throw new Error('Recipient number or group id is required.');
+  }
+  return `${phone}@s.whatsapp.net`;
+}
+
+function isGroupJid(value) {
+  return /^\d+(?:-\d+)?@g\.us$/i.test(String(value || '').trim());
 }
 
 function extractText(message) {
@@ -353,6 +407,7 @@ module.exports = {
   getOrStartClient,
   getRuntimeStatus,
   onWhatsappEvent,
+  reconnectClient,
   restartClient,
   sendMessage,
   sendText,
