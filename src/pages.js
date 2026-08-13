@@ -1070,6 +1070,57 @@ function loginPage({ config }) {
         return Math.ceil((new Date(value).getTime() - Date.now()) / 86400000);
       }
 
+      function customerStatusLabel(customer) {
+        if (customer.subscriptionStatus === 'active') return 'Active plan';
+        const left = daysLeft(customer.trialEndsAt);
+        if (left < 0) return 'Trial expired';
+        return 'Free trial';
+      }
+
+      function customerStatusClass(customer) {
+        if (customer.subscriptionStatus === 'active') return 'active';
+        return daysLeft(customer.trialEndsAt) < 0 ? 'failed' : 'queued';
+      }
+
+      function trialBanner(customer) {
+        if (customer.subscriptionStatus === 'active') {
+          return '<strong>Active plan</strong><span>Your workspace is active and ready for API sends.</span>';
+        }
+        const left = daysLeft(customer.trialEndsAt);
+        if (left < 0) {
+          return '<strong>Trial expired</strong><span>Sending is paused until the subscription is activated.</span>';
+        }
+        const progress = Math.max(0, Math.min(100, Math.round((left / ${Number(config.trialDays || 7)}) * 100)));
+        return '<strong>Free trial</strong><span>' + left + ' day' + (left === 1 ? '' : 's') + ' remaining. Trial ends ' + escapeHtml(formatDate(customer.trialEndsAt)) + '.</span><div class="trial-progress"><i style="width:' + progress + '%"></i></div>';
+      }
+
+      function friendlyPhoneStatus(status) {
+        const labels = {
+          created: 'setup needed',
+          starting: 'starting',
+          qr: 'scan QR',
+          ready: 'connected',
+          disconnected: 'inactive',
+          unlinked: 'inactive',
+          error: 'error',
+          auth_failure: 'auth failed'
+        };
+        return labels[status] || status;
+      }
+
+      function phoneSeverity(status, connected) {
+        if (connected || status === 'ready') return 'active';
+        if (status === 'qr' || status === 'starting' || status === 'created') return 'queued';
+        return 'failed';
+      }
+
+      function phoneStatusHelp(status, connected) {
+        if (connected || status === 'ready') return 'Connected and ready to send queued API messages.';
+        if (status === 'qr') return 'Waiting for WhatsApp QR scan.';
+        if (status === 'starting' || status === 'created') return 'Session is not connected yet.';
+        return 'WhatsApp is inactive. Reconnect before sending messages.';
+      }
+
       document.addEventListener('click', async event => {
         const scrollButton = event.target.closest('[data-scroll-target]');
         if (scrollButton) {
