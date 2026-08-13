@@ -725,7 +725,7 @@ function loginPage({ config }) {
               </div>
             </div>
             <nav class="side-nav" aria-label="Dashboard sections">
-              <button type="button" data-scroll-target="overview"><span class="nav-icon">⌂</span><span class="nav-text">Overview</span></button>
+              <button class="active" type="button" data-scroll-target="overview"><span class="nav-icon">⌂</span><span class="nav-text">Overview</span></button>
               <button type="button" data-scroll-target="phoneCards"><span class="nav-icon">◉</span><span class="nav-text">WhatsApp QR</span></button>
               <button type="button" data-scroll-target="groupsMain"><span class="nav-icon">☷</span><span class="nav-text">Groups</span></button>
               <button type="button" data-scroll-target="history"><span class="nav-icon">↻</span><span class="nav-text">Logs</span></button>
@@ -775,7 +775,7 @@ function loginPage({ config }) {
             </section>
           </aside>
           <div class="customer-stack">
-          <section class="customer-hero" id="overview">
+          <section class="customer-hero dashboard-panel" id="overview">
             <div class="panel-head">
               <div><h2>Overview</h2><p id="customerName">Monitor your WhatsApp API activity and connected sessions.</p></div>
               <div class="actions"><span class="pill" id="customerStatus">trial</span><button class="secondary" id="customerRefreshBtn">Refresh</button></div>
@@ -803,8 +803,7 @@ function loginPage({ config }) {
               <div id="phoneCards"></div>
             </div>
           </section>
-          <div class="dash-grid dashboard-insights">
-            <section id="groupsMain" class="main-card">
+          <section id="groupsMain" class="main-card dashboard-panel hidden">
               <div class="panel-head">
                 <div><h2>WhatsApp Groups</h2><p>Copy group IDs and use them as the API or sheet recipient.</p></div>
                 <span class="pill" id="mainGroupCount">0 groups</span>
@@ -814,7 +813,7 @@ function loginPage({ config }) {
                 <div class="main-group-list" id="mainGroupsList"></div>
               </div>
             </section>
-            <section id="recentMain" class="main-card">
+            <section id="recentMain" class="main-card dashboard-panel hidden">
               <div class="panel-head">
                 <div><h2>Recent Logs</h2><p>Latest sent, failed, and received message events.</p></div>
                 <span class="pill" id="mainRecentCount">0 logs</span>
@@ -823,8 +822,7 @@ function loginPage({ config }) {
                 <div class="main-recent-list" id="mainRecentLogs"></div>
               </div>
             </section>
-          </div>
-          <div class="dash-grid" id="history">
+          <div class="dash-grid dashboard-panel hidden" id="history">
             <section>
               <div class="panel-head"><h2>Message Queue</h2><span class="pill queued" id="queueLabel">0 queued</span></div>
               <div class="panel-body">
@@ -894,6 +892,7 @@ function loginPage({ config }) {
       let sessionToken = '';
       localStorage.removeItem('mis_api_session');
       restoreCustomerSession();
+      const dashboardPanelTargets = new Set(['overview', 'phoneCards', 'groupsMain', 'history', 'recentMain']);
       document.getElementById('loginForm').addEventListener('submit', async event => {
         event.preventDefault();
         await login();
@@ -987,6 +986,7 @@ function loginPage({ config }) {
       function logout() {
         sessionToken = '';
         document.body.classList.remove('is-authenticated');
+        document.body.classList.remove('is-customer');
         sessionStorage.removeItem('mis_api_admin_session');
         localStorage.removeItem('mis_api_session');
         fetch('/v1/auth/logout', { method: 'POST' }).catch(() => {});
@@ -996,21 +996,45 @@ function loginPage({ config }) {
         document.getElementById('adminDashboard').classList.add('hidden');
         document.getElementById('publicDetails').classList.remove('hidden');
         stopPhonePollers();
+        showDashboardPanel('overview', { scroll: false });
         document.getElementById('password').value = '';
         document.getElementById('username').focus();
       }
 
       function showCustomerShell() {
         document.body.classList.add('is-authenticated');
+        document.body.classList.add('is-customer');
         document.getElementById('loginCard').classList.add('hidden');
         document.getElementById('topLogoutBtn').classList.remove('hidden');
         document.getElementById('publicDetails').classList.add('hidden');
         document.getElementById('adminDashboard').classList.add('hidden');
         document.getElementById('dashboard').classList.remove('hidden');
+        if (!document.querySelector('.dashboard-panel:not(.hidden)')) {
+          showDashboardPanel('overview', { scroll: false });
+        }
+      }
+
+      function showDashboardPanel(targetId, options = {}) {
+        const panelId = targetId === 'phoneCards' ? 'overview' : targetId;
+        document.querySelectorAll('.dashboard-panel').forEach(panel => {
+          panel.classList.toggle('hidden', panel.id !== panelId);
+        });
+        document.querySelectorAll('.side-nav [data-scroll-target]').forEach(button => {
+          button.classList.toggle('active', button.getAttribute('data-scroll-target') === targetId);
+        });
+        if (targetId === 'groupsMain') {
+          loadGroupsPanel();
+        }
+        if (options.scroll === false) {
+          return;
+        }
+        const target = document.getElementById(targetId === 'phoneCards' ? 'phoneCards' : panelId);
+        target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
       async function showAdminDashboard() {
         document.body.classList.add('is-authenticated');
+        document.body.classList.remove('is-customer');
         document.getElementById('loginCard').classList.add('hidden');
         document.getElementById('topLogoutBtn').classList.remove('hidden');
         document.getElementById('publicDetails').classList.add('hidden');
@@ -1380,7 +1404,12 @@ function loginPage({ config }) {
       document.addEventListener('click', async event => {
         const scrollButton = event.target.closest('[data-scroll-target]');
         if (scrollButton) {
-          const target = document.getElementById(scrollButton.getAttribute('data-scroll-target'));
+          const targetId = scrollButton.getAttribute('data-scroll-target');
+          if (document.body.classList.contains('is-authenticated') && dashboardPanelTargets.has(targetId)) {
+            showDashboardPanel(targetId);
+            return;
+          }
+          const target = document.getElementById(targetId);
           target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           return;
         }
@@ -3767,8 +3796,17 @@ function premiumSaaSStyles() {
       .side-nav button:hover {
         background: linear-gradient(135deg, #ecfdf5, #eff6ff);
       }
+      .side-nav button.active {
+        background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
+        color: #0f766e;
+      }
       .side-nav button:hover .nav-icon {
         background: linear-gradient(135deg, #14b8a6, #22c55e);
+        color: #fff;
+      }
+      .side-nav button.active .nav-icon {
+        background: linear-gradient(135deg, #14b8a6, #22c55e);
+        box-shadow: 0 12px 28px rgba(20, 184, 166, .18);
         color: #fff;
       }
       .side-panel:not(:hover):not(:focus-within) .side-reveal {
@@ -3796,17 +3834,20 @@ function premiumSaaSStyles() {
           radial-gradient(circle at top right, rgba(34, 197, 94, .16), transparent 160px),
           #ffffff;
       }
-      .is-authenticated main {
+      .dashboard-panel.hidden {
+        display: none !important;
+      }
+      .is-customer main {
         max-width: none;
         padding: 14px 20px 48px 104px;
       }
-      .is-authenticated .portal-top {
+      .is-customer .portal-top {
         margin: 0 0 18px;
       }
-      .is-authenticated .customer-dashboard {
+      .is-customer .customer-dashboard {
         display: block;
       }
-      .is-authenticated .side-panel {
+      .is-customer .side-panel {
         bottom: 14px;
         left: 14px;
         overflow-x: hidden;
@@ -3815,11 +3856,11 @@ function premiumSaaSStyles() {
         top: 14px;
         width: 72px;
       }
-      .is-authenticated .side-panel:hover,
-      .is-authenticated .side-panel:focus-within {
+      .is-customer .side-panel:hover,
+      .is-customer .side-panel:focus-within {
         width: 336px;
       }
-      .is-authenticated .customer-stack {
+      .is-customer .customer-stack {
         display: grid;
         gap: 14px;
       }
