@@ -330,6 +330,27 @@ function adminPage({ config }) {
       });
       document.getElementById('refreshCustomersBtn')?.addEventListener('click', loadCustomers);
       document.addEventListener('click', async event => {
+        const deleteButton = event.target.closest('[data-delete-customer]');
+        if (deleteButton) {
+          const customerId = deleteButton.getAttribute('data-delete-customer');
+          const customerName = deleteButton.getAttribute('data-customer-name') || customerId;
+          if (!confirm('Delete user "' + customerName + '"? This removes their phones, sessions, queue, and logs.')) {
+            return;
+          }
+          deleteButton.disabled = true;
+          deleteButton.textContent = 'Deleting...';
+          const response = await fetch('/v1/admin/customers/' + encodeURIComponent(customerId), {
+            method: 'DELETE',
+            headers: { 'x-admin-session-token': adminToken }
+          });
+          const data = await response.json();
+          if (!data.ok) {
+            alert(data.error || 'Could not delete user.');
+          }
+          await loadCustomers();
+          return;
+        }
+
         const button = event.target.closest('[data-toggle-customer]');
         if (!button) return;
         const customerId = button.getAttribute('data-toggle-customer');
@@ -420,7 +441,8 @@ function adminPage({ config }) {
           '<td>' + escapeHtml(customer.subscriptionStatus || '-') + '<br>' + escapeHtml(formatDate(customer.trialEndsAt)) + '<br><span class="small">' + daysLeft(customer.trialEndsAt) + ' days left</span></td>' +
           '<td><strong>' + customer.phoneCount + '</strong> phones<br><span class="small">' + customer.pendingQueueCount + ' active queue / ' + customer.messageCount + ' logs</span></td>' +
           '<td><div class="actions" style="justify-content:flex-start;gap:6px;"><button class="' + actionClass + '" type="button" data-toggle-customer="' + escapeHtml(customer.id) + '" data-disabled="' + String(disabled) + '">' + actionText + '</button>' +
-          '<button class="secondary" type="button" data-toggle-customer="' + escapeHtml(customer.id) + '" data-disabled="' + String(disabled) + '" data-subscription-status="' + billingStatus + '">' + billingText + '</button></div></td>' +
+          '<button class="secondary" type="button" data-toggle-customer="' + escapeHtml(customer.id) + '" data-disabled="' + String(disabled) + '" data-subscription-status="' + billingStatus + '">' + billingText + '</button>' +
+          '<button class="danger" type="button" data-delete-customer="' + escapeHtml(customer.id) + '" data-customer-name="' + escapeHtml(customer.name || customer.username || customer.id) + '">Delete</button></div></td>' +
           '</tr>';
       }
 
@@ -665,8 +687,8 @@ function loginPage({ config }) {
           <h1>MIS_api</h1>
         </div>
         <nav class="portal-nav" aria-label="Primary">
-          <button class="ghost" type="button" data-scroll-target="api">API Docs</button>
-          <button class="ghost" type="button" data-scroll-target="pricing">Pricing</button>
+          <button class="ghost" type="button" data-scroll-target="sheetApiMain">API Docs</button>
+          <button class="ghost" type="button" data-scroll-target="subscriptionMain">Pricing</button>
           <a class="ghost-link" href="mailto:${escapeHtml(payment.salesEmail)}">Support</a>
         </nav>
         <div class="actions"><button class="secondary top-logout hidden" id="topLogoutBtn">Logout</button></div>
@@ -681,13 +703,13 @@ function loginPage({ config }) {
             </div>
             <form id="loginForm">
               <label>User ID<input id="username" autocomplete="username"></label>
-              <label>Password<input id="password" type="password" autocomplete="current-password"></label>
+              <label>Password<div class="password-field"><input id="password" type="password" autocomplete="current-password"><button class="password-eye" type="button" data-toggle-password="password" aria-label="Show password">👁</button></div></label>
               <button id="loginBtn" type="submit">Sign in</button>
             </form>
             <form class="hidden" id="signupForm">
               <label>Company name<input id="signupName" autocomplete="organization"></label>
               <label>User ID<input id="signupUsername" autocomplete="username"></label>
-              <label>Password<input id="signupPassword" type="password" autocomplete="new-password"></label>
+              <label>Password<div class="password-field"><input id="signupPassword" type="password" autocomplete="new-password"><button class="password-eye" type="button" data-toggle-password="signupPassword" aria-label="Show password">👁</button></div></label>
               <button id="signupBtn" type="submit">Start free trial</button>
             </form>
             <p class="small auth-error" id="loginError"></p>
@@ -700,10 +722,6 @@ function loginPage({ config }) {
               <div class="product-kicker">MIS_api WhatsApp Console</div>
               <h2>Let's Get Started</h2>
               <p>Launch a premium WhatsApp API workspace with QR linking, queued sending, clear logs, group IDs and Sheet-ready code in one secure dashboard.</p>
-              <div class="public-actions">
-                <button type="button" data-scroll-target="api">View API endpoint</button>
-                <button class="secondary" type="button" data-scroll-target="pricing">View plans</button>
-              </div>
               <div class="trust-line">Built for developers • Queue controls • Message logs • Secure API access</div>
             </div>
             <div class="hero-console" aria-label="API preview">
@@ -716,50 +734,6 @@ function loginPage({ config }) {
               </div>
             </div>
           </section>
-
-          <div class="detail-grid" id="features">
-            <div class="detail-card">${iconSvg('qr')}<strong>QR Sessions</strong><span>Connect, reconnect and monitor WhatsApp sessions from one place.</span></div>
-            <div class="detail-card">${iconSvg('queue')}<strong>Message Queue</strong><span>Release outbound messages at controlled intervals instead of sending in bursts.</span></div>
-            <div class="detail-card">${iconSvg('logs')}<strong>Audit Trail</strong><span>See sent and failed messages with a clear operational history.</span></div>
-          </div>
-
-          <section class="api-panel" id="api">
-            <div class="section-head">
-              <div><h2>Send your first message</h2><p>Use your customer API key to send messages through your connected WhatsApp number.</p></div>
-              <button class="secondary" id="copyPublicApiBtn" type="button">Copy</button>
-            </div>
-            <pre class="api-box"><code id="publicCurlCode">curl -X POST ${escapeHtml(config.baseUrl)}/v1/messages/send \\
-  -H "Authorization: Bearer CUSTOMER_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "phoneId": "PHONE_ID",
-    "to": "91XXXXXXXXXX",
-    "message": "Hello from MIS_api"
-  }'</code></pre>
-          </section>
-
-          <div class="pricing-row" id="pricing">
-            <div class="price-card">
-              <span class="price-label">Free Trial</span>
-              <div class="price-big">${Number(config.trialDays || 7)} days</div>
-              <p>Test one connected WhatsApp account with API access, queue, logs, and dashboard access.</p>
-              <button type="button" data-auth-mode="signup">Start free trial</button>
-            </div>
-            <div class="price-card price-card-main">
-              <span class="recommended">Recommended</span>
-              <span class="price-label">${escapeHtml(payment.planName)}</span>
-              <div class="price-big">${escapeHtml(payment.monthlyPrice)}</div>
-              <ul>
-                <li>One WhatsApp number</li>
-                <li>QR reconnect page</li>
-                <li>API key access</li>
-                <li>Queue management</li>
-                <li>Message logs</li>
-                <li>Support</li>
-              </ul>
-              <a class="button secondary" href="mailto:${escapeHtml(payment.salesEmail)}">Contact support</a>
-            </div>
-          </div>
         </div>
         <div id="dashboard" class="customer-dashboard hidden">
           <aside class="side-panel" aria-label="Customer tools">
@@ -940,6 +914,9 @@ function loginPage({ config }) {
       });
       document.getElementById('showLoginBtn').addEventListener('click', () => setAuthMode('login'));
       document.getElementById('showSignupBtn').addEventListener('click', () => setAuthMode('signup'));
+      document.querySelectorAll('[data-toggle-password]').forEach(button => {
+        button.addEventListener('click', () => togglePassword(button));
+      });
       document.getElementById('customerRefreshBtn').addEventListener('click', loadDashboard);
       document.getElementById('saveWebhookBtn').addEventListener('click', saveWebhook);
       document.getElementById('refreshGroupsBtn').addEventListener('click', loadGroupsPanel);
@@ -948,13 +925,6 @@ function loginPage({ config }) {
       document.getElementById('topLogoutBtn').addEventListener('click', logout);
       document.getElementById('adminRefreshBtn').addEventListener('click', loadAdminDashboard);
       document.getElementById('adminCreateBtn').addEventListener('click', createAdminCustomer);
-      document.getElementById('copyPublicApiBtn')?.addEventListener('click', async () => {
-        await copyText(document.getElementById('publicCurlCode').textContent);
-        document.getElementById('copyPublicApiBtn').textContent = 'Copied';
-        setTimeout(() => {
-          document.getElementById('copyPublicApiBtn').textContent = 'Copy';
-        }, 1200);
-      });
       const phonePollers = new Map();
       const apiBaseUrl = ${JSON.stringify(config.baseUrl)};
       let customerApiKey = '';
@@ -973,6 +943,15 @@ function loginPage({ config }) {
           ? '${Number(config.trialDays || 7)}-day free trial. One trial is allowed for each user ID.'
           : 'Admin and customer workspaces are protected. Use logout after managing shared devices.';
         document.getElementById('loginError').textContent = '';
+      }
+
+      function togglePassword(button) {
+        const input = document.getElementById(button.getAttribute('data-toggle-password'));
+        if (!input) return;
+        const showing = input.type === 'text';
+        input.type = showing ? 'password' : 'text';
+        button.textContent = showing ? '👁' : '🙈';
+        button.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
       }
 
       async function login() {
@@ -4627,12 +4606,17 @@ function premiumSaaSStyles() {
         color: #ffffff !important;
       }
       body:not(.is-authenticated) .login-card input {
-        background: rgba(0, 0, 0, .16) !important;
+        appearance: none !important;
+        background: #071810 !important;
+        background-clip: padding-box !important;
         border: 0 !important;
         border-bottom: 1px solid rgba(236, 253, 245, .46) !important;
         border-radius: 0 !important;
         box-shadow: none !important;
+        caret-color: #22c55e !important;
         color: #ffffff !important;
+        min-height: 50px !important;
+        padding: 0 46px 0 10px !important;
         -webkit-text-fill-color: #ffffff !important;
       }
       body:not(.is-authenticated) .login-card input::placeholder {
@@ -4642,13 +4626,71 @@ function premiumSaaSStyles() {
         border-bottom-color: #22c55e !important;
         box-shadow: 0 10px 26px -28px rgba(34, 197, 94, .9) !important;
       }
+      body:not(.is-authenticated) .login-card input:-webkit-autofill,
+      body:not(.is-authenticated) .login-card input:-webkit-autofill:hover,
+      body:not(.is-authenticated) .login-card input:-webkit-autofill:focus,
+      body:not(.is-authenticated) .login-card input:-webkit-autofill:active {
+        border-bottom: 1px solid rgba(34, 197, 94, .72) !important;
+        box-shadow: 0 0 0 1000px #071810 inset !important;
+        caret-color: #22c55e !important;
+        transition: background-color 999999s ease-in-out 0s !important;
+        -webkit-box-shadow: 0 0 0 1000px #071810 inset !important;
+        -webkit-text-fill-color: #ffffff !important;
+      }
       body:not(.is-authenticated) .login-card button[type="submit"] {
         background: linear-gradient(135deg, #12ad69, #079253) !important;
         color: #ffffff !important;
       }
+      body:not(.is-authenticated) .password-field {
+        position: relative !important;
+      }
+      body:not(.is-authenticated) .password-field input {
+        width: 100% !important;
+      }
+      body:not(.is-authenticated) .login-card .password-eye {
+        align-items: center !important;
+        background: rgba(255, 255, 255, .08) !important;
+        border: 1px solid rgba(236, 253, 245, .16) !important;
+        border-radius: 999px !important;
+        box-shadow: none !important;
+        color: #dcfce7 !important;
+        cursor: pointer !important;
+        display: grid !important;
+        font-size: 15px !important;
+        height: 34px !important;
+        margin: 0 !important;
+        min-height: 34px !important;
+        padding: 0 !important;
+        place-items: center !important;
+        position: absolute !important;
+        right: 8px !important;
+        top: 8px !important;
+        transform: none !important;
+        width: 34px !important;
+        z-index: 2 !important;
+      }
+      body:not(.is-authenticated) .login-card .password-eye:hover {
+        background: rgba(34, 197, 94, .18) !important;
+      }
       body:not(.is-authenticated) #dashboard,
       body:not(.is-authenticated) #adminDashboard {
         display: none !important;
+      }
+      body:not(.is-authenticated) #features,
+      body:not(.is-authenticated) #api,
+      body:not(.is-authenticated) #pricing,
+      body:not(.is-authenticated) .detail-grid,
+      body:not(.is-authenticated) .api-panel,
+      body:not(.is-authenticated) .pricing-row,
+      body:not(.is-authenticated) .public-actions {
+        display: none !important;
+      }
+      body:not(.is-authenticated) .login-grid {
+        min-height: clamp(520px, calc(100vh - 44px), 620px) !important;
+      }
+      body:not(.is-authenticated) .public-hero,
+      body:not(.is-authenticated) .login-card {
+        min-height: clamp(472px, calc(100vh - 92px), 572px) !important;
       }
       .hidden,
       #dashboard.hidden,

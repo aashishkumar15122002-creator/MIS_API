@@ -166,6 +166,38 @@ function updateCustomer(customerId, patch) {
   return customer;
 }
 
+function deleteCustomer(customerId) {
+  const db = readDb();
+  const customer = db.customers.find(item => item.id === customerId);
+  if (!customer) {
+    return null;
+  }
+
+  const before = {
+    phones: db.phones.length,
+    messages: db.messages.length,
+    queue: db.queue.length,
+    sessions: db.sessions.length
+  };
+
+  db.customers = db.customers.filter(item => item.id !== customerId);
+  db.phones = db.phones.filter(item => item.customerId !== customerId);
+  db.messages = db.messages.filter(item => item.customerId !== customerId);
+  db.queue = db.queue.filter(item => item.customerId !== customerId);
+  db.sessions = db.sessions.filter(item => item.customerId !== customerId);
+  writeDb(db);
+
+  return {
+    customer,
+    removed: {
+      phones: before.phones - db.phones.length,
+      messages: before.messages - db.messages.length,
+      queue: before.queue - db.queue.length,
+      sessions: before.sessions - db.sessions.length
+    }
+  };
+}
+
 function findCustomerByLogin(username, password) {
   const normalized = normalizeUsername(username);
   const customer = readDb().customers.find(item => item.username === normalized);
@@ -431,6 +463,7 @@ function safeEqual(left, right) {
 
 module.exports = {
   createCustomer,
+  deleteCustomer,
   createPhone,
   createSession,
   createSignupCustomer,

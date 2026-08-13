@@ -16,6 +16,7 @@ const {
 const { adminPage, connectPage, homePage, loginPage } = require('./pages');
 const {
   createCustomer,
+  deleteCustomer,
   createPhone,
   createSession,
   createSignupCustomer,
@@ -349,6 +350,22 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, {
         ok: true,
         customer: publicCustomer(customer)
+      });
+    }
+
+    const adminCustomerDeleteMatch = url.pathname.match(/^\/v1\/admin\/customers\/([^/]+)$/);
+    if (request.method === 'DELETE' && adminCustomerDeleteMatch) {
+      requireAdminSession(request);
+      const result = deleteCustomer(adminCustomerDeleteMatch[1]);
+
+      if (!result) {
+        throw error(404, 'Customer not found.');
+      }
+
+      return sendJson(response, 200, {
+        ok: true,
+        deletedCustomerId: result.customer.id,
+        removed: result.removed
       });
     }
 
