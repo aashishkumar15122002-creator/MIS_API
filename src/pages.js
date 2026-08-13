@@ -458,6 +458,7 @@ function loginPage({ config }) {
       ${consoleStyles()}
       body { background: #f7faf9; }
       main { max-width: 1240px; margin: 0 auto; padding: 22px 18px 48px; }
+      .desktop-required { display: none; }
       .portal-top { align-items: center; background: rgba(247,250,249,.92); border-bottom: 1px solid #dbe5e1; display: flex; justify-content: space-between; margin: 0 -18px 28px; padding: 12px 18px; position: sticky; top: 0; z-index: 4; }
       .portal-title { align-items: center; display: flex; gap: 28px; }
       .portal-title h1 { font-size: 26px; font-weight: 900; margin: 0; }
@@ -532,6 +533,62 @@ function loginPage({ config }) {
         to { opacity: 1; }
       }
       @media (max-width: 860px) {
+        main { display: none; }
+        .desktop-required {
+          align-items: center;
+          background:
+            radial-gradient(circle at top left, rgba(34,197,94,.22), transparent 260px),
+            linear-gradient(135deg, #08111f, #0f2f2a);
+          color: #fff;
+          display: flex;
+          min-height: 100vh;
+          padding: 22px;
+        }
+        .desktop-required-card {
+          background: rgba(255,255,255,.08);
+          border: 1px solid rgba(255,255,255,.16);
+          border-radius: 24px;
+          box-shadow: 0 28px 80px rgba(0,0,0,.25);
+          margin: 0 auto;
+          max-width: 420px;
+          padding: 26px;
+          text-align: center;
+        }
+        .desktop-required-icon {
+          align-items: center;
+          background: #22c55e;
+          border-radius: 18px;
+          box-shadow: 0 18px 42px rgba(34,197,94,.28);
+          color: #052e16;
+          display: grid;
+          font-size: 30px;
+          font-weight: 900;
+          height: 64px;
+          margin: 0 auto 18px;
+          place-items: center;
+          width: 64px;
+        }
+        .desktop-required-card h1 {
+          font-size: 28px;
+          margin-bottom: 10px;
+        }
+        .desktop-required-card p,
+        .desktop-required-steps span {
+          color: rgba(255,255,255,.74);
+          line-height: 1.6;
+        }
+        .desktop-required-steps {
+          background: rgba(255,255,255,.08);
+          border: 1px solid rgba(255,255,255,.12);
+          border-radius: 16px;
+          display: grid;
+          gap: 6px;
+          margin-top: 18px;
+          padding: 14px;
+        }
+        .desktop-required-steps strong {
+          color: #dcfce7;
+        }
         .portal-top { align-items: flex-start; display: block; position: static; }
         .portal-title { align-items: flex-start; display: grid; gap: 6px; }
         .portal-top .actions { margin-top: 12px; }
@@ -545,6 +602,17 @@ function loginPage({ config }) {
     </style>
   </head>
   <body>
+    <div class="desktop-required">
+      <div class="desktop-required-card">
+        <div class="desktop-required-icon">↔</div>
+        <h1>Desktop mode required</h1>
+        <p>MIS_api dashboard works best on a wider screen because QR scanning, logs, groups, and scripts need space.</p>
+        <div class="desktop-required-steps">
+          <strong>On mobile browser:</strong>
+          <span>Open browser menu and enable “Desktop site”, or use a laptop/desktop.</span>
+        </div>
+      </div>
+    </div>
     <main>
       <div class="portal-top">
         <div class="portal-title">
