@@ -3655,6 +3655,33 @@ function premiumSaaSStyles() {
           radial-gradient(circle at top right, rgba(34, 197, 94, .16), transparent 160px),
           #ffffff;
       }
+      .is-authenticated main {
+        max-width: none;
+        padding: 14px 20px 48px 104px;
+      }
+      .is-authenticated .portal-top {
+        margin: 0 0 18px;
+      }
+      .is-authenticated .customer-dashboard {
+        display: block;
+      }
+      .is-authenticated .side-panel {
+        bottom: 14px;
+        left: 14px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        position: fixed;
+        top: 14px;
+        width: 72px;
+      }
+      .is-authenticated .side-panel:hover,
+      .is-authenticated .side-panel:focus-within {
+        width: 336px;
+      }
+      .is-authenticated .customer-stack {
+        display: grid;
+        gap: 14px;
+      }
       .is-authenticated .public-stack,
       .is-authenticated .login-card {
         display: none !important;
@@ -3826,31 +3853,6 @@ function premiumSaaSStyles() {
         overflow-x: auto;
       }
       @media (max-width: 1023px) {
-        .customer-dashboard {
-          grid-template-columns: 1fr;
-        }
-        .side-panel {
-          position: static;
-          width: auto;
-        }
-        .side-reveal,
-        .nav-text {
-          opacity: 1;
-          pointer-events: auto;
-          white-space: normal;
-        }
-        .side-panel:not(:hover):not(:focus-within) .side-reveal {
-          height: auto;
-          overflow: visible;
-          width: auto;
-        }
-        .side-panel:not(:hover):not(:focus-within) .side-card,
-        .side-panel:not(:hover):not(:focus-within) .side-profile,
-        .side-profile,
-        .side-card {
-          grid-template-columns: 42px minmax(0, 1fr);
-          justify-content: stretch;
-        }
         .login-grid,
         .public-hero,
         .pricing-row {
