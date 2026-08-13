@@ -210,6 +210,34 @@ async function sendMessage(phone, to, { message, file } = {}) {
   return socket.sendMessage(jid, { text: String(message || '') });
 }
 
+async function listGroups(phone) {
+  const entry = getOrStartClient(phone);
+  const socket = entry.socket || await entry.starting;
+  const state = stateFor(phone.id);
+
+  if (!state.ready) {
+    throw new Error('WhatsApp phone is not connected. Scan QR first.');
+  }
+
+  if (typeof socket.groupFetchAllParticipating !== 'function') {
+    throw new Error('Group list is not available for this WhatsApp session.');
+  }
+
+  const groups = await socket.groupFetchAllParticipating();
+  return Object.values(groups || {})
+    .map(group => ({
+      id: group.id,
+      subject: group.subject || 'Unnamed group',
+      phoneId: phone.id,
+      participants: Array.isArray(group.participants) ? group.participants.length : 0,
+      announce: Boolean(group.announce),
+      restrict: Boolean(group.restrict),
+      owner: group.owner || null
+    }))
+    .filter(group => group.id)
+    .sort((left, right) => left.subject.localeCompare(right.subject));
+}
+
 async function reconnectClient(phone) {
   const state = stateFor(phone.id);
   const runtimeStatus = String(state.status || '').toLowerCase();
@@ -406,6 +434,7 @@ function onWhatsappEvent(listener) {
 module.exports = {
   getOrStartClient,
   getRuntimeStatus,
+  listGroups,
   onWhatsappEvent,
   reconnectClient,
   restartClient,

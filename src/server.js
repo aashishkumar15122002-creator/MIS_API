@@ -39,7 +39,7 @@ const {
   updateQueueMessage,
   verifyConnectToken
 } = require('./store');
-const { getOrStartClient, getRuntimeStatus, onWhatsappEvent, reconnectClient, restartClient, sendMessage, unlinkClient } = require('./whatsapp-manager');
+const { getOrStartClient, getRuntimeStatus, listGroups, onWhatsappEvent, reconnectClient, restartClient, sendMessage, unlinkClient } = require('./whatsapp-manager');
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -193,6 +193,27 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, {
         ok: true,
         queue: listQueue(customer.id, url.searchParams.get('limit') || 100)
+      });
+    }
+
+    if (request.method === 'GET' && url.pathname === '/v1/customer/groups') {
+      const customer = requireSessionCustomer(request);
+      const phones = listPhones(customer.id);
+      const groups = [];
+      let lastError = '';
+
+      for (const phone of phones) {
+        try {
+          groups.push(...await listGroups(phone));
+        } catch (err) {
+          lastError = err.message;
+        }
+      }
+
+      return sendJson(response, 200, {
+        ok: true,
+        groups,
+        error: groups.length ? null : lastError
       });
     }
 

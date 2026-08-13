@@ -647,8 +647,54 @@ function loginPage({ config }) {
             </div>
           </div>
         </div>
-        <div id="dashboard" class="customer-stack hidden">
-          <section class="customer-hero">
+        <div id="dashboard" class="customer-dashboard hidden">
+          <aside class="side-panel" aria-label="Customer tools">
+            <div class="side-profile">
+              <div class="side-avatar">WA</div>
+              <div>
+                <strong id="sideCustomerName">Workspace</strong>
+                <span id="sideCustomerMeta">WhatsApp API console</span>
+              </div>
+            </div>
+            <nav class="side-nav" aria-label="Dashboard sections">
+              <button type="button" data-scroll-target="overview">Overview</button>
+              <button type="button" data-scroll-target="phoneCards">WhatsApp QR</button>
+              <button type="button" data-scroll-target="sideGroupsCard">Groups</button>
+              <button type="button" data-scroll-target="history">Logs</button>
+            </nav>
+            <section class="side-card side-subscription" id="sideSubscriptionCard">
+              <span class="side-label">Subscription</span>
+              <strong id="sideSubscriptionStatus">Free trial</strong>
+              <p id="sideTrialText">Loading plan details...</p>
+              <div class="side-price">
+                <span>${escapeHtml(payment.planName)}</span>
+                <b>${escapeHtml(payment.monthlyPrice)}</b>
+              </div>
+              <a class="side-link" href="mailto:${escapeHtml(payment.salesEmail)}">Upgrade / support</a>
+            </section>
+            <section class="side-card" id="sideGroupsCard">
+              <div class="side-card-head">
+                <div>
+                  <span class="side-label">WhatsApp Groups</span>
+                  <strong id="sideGroupCount">0 groups</strong>
+                </div>
+                <button class="mini-button" type="button" id="refreshGroupsBtn">Refresh</button>
+              </div>
+              <p class="side-muted" id="groupsState">Connect WhatsApp to load groups.</p>
+              <div class="group-list" id="groupsList"></div>
+            </section>
+            <section class="side-card">
+              <span class="side-label">Recent history</span>
+              <strong id="sideLogCount">0 messages</strong>
+              <div class="side-log-list" id="sideRecentLogs"></div>
+            </section>
+            <section class="side-card side-tip">
+              <span class="side-label">Send target</span>
+              <p>Use a phone number like <code>919876543210</code> or copy a group id ending with <code>@g.us</code>.</p>
+            </section>
+          </aside>
+          <div class="customer-stack">
+          <section class="customer-hero" id="overview">
             <div class="panel-head">
               <div><h2>Overview</h2><p id="customerName">Monitor your WhatsApp API activity and connected sessions.</p></div>
               <div class="actions"><span class="pill" id="customerStatus">trial</span><button class="secondary" id="customerRefreshBtn">Refresh</button></div>
@@ -676,7 +722,7 @@ function loginPage({ config }) {
               <div id="phoneCards"></div>
             </div>
           </section>
-          <div class="dash-grid">
+          <div class="dash-grid" id="history">
             <section>
               <div class="panel-head"><h2>Message Queue</h2><span class="pill queued" id="queueLabel">0 queued</span></div>
               <div class="panel-body">
@@ -695,6 +741,7 @@ function loginPage({ config }) {
                 </table>
               </div>
             </section>
+          </div>
           </div>
         </div>
         <div id="adminDashboard" class="admin-dashboard hidden">
@@ -757,6 +804,7 @@ function loginPage({ config }) {
       document.getElementById('showSignupBtn').addEventListener('click', () => setAuthMode('signup'));
       document.getElementById('customerRefreshBtn').addEventListener('click', loadDashboard);
       document.getElementById('saveWebhookBtn').addEventListener('click', saveWebhook);
+      document.getElementById('refreshGroupsBtn').addEventListener('click', loadGroupsPanel);
       document.getElementById('topLogoutBtn').addEventListener('click', logout);
       document.getElementById('adminRefreshBtn').addEventListener('click', loadAdminDashboard);
       document.getElementById('adminCreateBtn').addEventListener('click', createAdminCustomer);
@@ -893,6 +941,7 @@ function loginPage({ config }) {
           : '';
         document.getElementById('dashboardNotice').className = 'dashboard-notice';
         customerApiKey = me.customer.apiKey || '';
+        renderSidePanel(me.customer, me.phones || [], queueRows, logRows);
         document.getElementById('phoneCount').textContent = me.phones.length;
         document.getElementById('queueCount').textContent = queueRows.length;
         document.getElementById('logCount').textContent = logRows.length;
@@ -910,12 +959,101 @@ function loginPage({ config }) {
         document.getElementById('logRows').innerHTML = logRows.length
           ? logRows.map(row).join('')
           : '<tr><td colspan="4" class="empty-row"><strong>No message activity</strong><span>Sent, failed, and received messages will appear here.</span></td></tr>';
+        loadGroupsPanel();
       }
 
       async function fetchJson(url) {
         const headers = sessionToken ? { 'x-session-token': sessionToken } : {};
         const response = await fetch(url, { headers });
         return response.json();
+      }
+
+      function renderSidePanel(customer, phones, queueRows, logRows) {
+        const phoneText = phones.length + ' WhatsApp phone' + (phones.length === 1 ? '' : 's');
+        const failedRows = logRows.filter(item => item.status === 'failed');
+        const recentRows = logRows.slice(0, 6);
+        document.getElementById('sideCustomerName').textContent = customer.name || 'Workspace';
+        document.getElementById('sideCustomerMeta').textContent = phoneText + ' • ' + queueRows.length + ' queued';
+        document.getElementById('sideSubscriptionStatus').textContent = customerStatusLabel(customer);
+        document.getElementById('sideTrialText').textContent = subscriptionSummary(customer);
+        document.getElementById('sideLogCount').textContent = logRows.length + ' message' + (logRows.length === 1 ? '' : 's');
+        document.getElementById('sideRecentLogs').innerHTML = recentRows.length
+          ? recentRows.map(sideLogItem).join('')
+          : '<div class="side-empty">No message history yet.</div>';
+        document.getElementById('sideSubscriptionCard').className = 'side-card side-subscription ' + customerStatusClass(customer);
+        if (failedRows.length) {
+          document.getElementById('sideCustomerMeta').textContent += ' • ' + failedRows.length + ' failed';
+        }
+      }
+
+      function subscriptionSummary(customer) {
+        if (customer.subscriptionStatus === 'active') {
+          return 'Your plan is active. API sending remains enabled.';
+        }
+        const left = daysLeft(customer.trialEndsAt);
+        if (left < 0) {
+          return 'Trial expired. Activate subscription to continue sending.';
+        }
+        return left + ' day' + (left === 1 ? '' : 's') + ' left in your free trial.';
+      }
+
+      async function loadGroupsPanel() {
+        const button = document.getElementById('refreshGroupsBtn');
+        if (button) {
+          button.disabled = true;
+          button.textContent = 'Loading';
+        }
+        document.getElementById('groupsState').textContent = 'Reading groups from connected WhatsApp...';
+        document.getElementById('groupsList').innerHTML = '<div class="side-empty">Loading groups...</div>';
+
+        try {
+          const data = await fetchJson('/v1/customer/groups');
+          renderGroups(data);
+        } catch (err) {
+          renderGroups({ ok: true, groups: [], error: err.message || 'Could not load groups.' });
+        } finally {
+          if (button) {
+            button.disabled = false;
+            button.textContent = 'Refresh';
+          }
+        }
+      }
+
+      function renderGroups(data) {
+        const groups = data.groups || [];
+        document.getElementById('sideGroupCount').textContent = groups.length + ' group' + (groups.length === 1 ? '' : 's');
+        document.getElementById('groupsState').textContent = groups.length
+          ? 'Copy a group id and use it as the "to" value in your API or sheet.'
+          : (data.error || 'No groups found yet. Make sure WhatsApp is connected.');
+        document.getElementById('groupsList').innerHTML = groups.length
+          ? groups.slice(0, 14).map(groupItem).join('')
+          : '<div class="side-empty">No WhatsApp groups available.</div>';
+      }
+
+      function groupItem(group) {
+        const meta = [
+          group.participants ? group.participants + ' members' : '',
+          group.announce ? 'admin-only' : '',
+          group.restrict ? 'restricted' : ''
+        ].filter(Boolean).join(' • ');
+        return '<div class="group-item">' +
+          '<div><strong>' + escapeHtml(group.subject || 'Unnamed group') + '</strong>' +
+          '<code>' + escapeHtml(group.id) + '</code>' +
+          '<span>' + escapeHtml(meta || 'WhatsApp group') + '</span></div>' +
+          '<button class="mini-button" type="button" data-copy-group="' + escapeHtml(group.id) + '">Copy</button>' +
+          '</div>';
+      }
+
+      function sideLogItem(item) {
+        const content = item.message || item.error || item.file?.filename || 'Message';
+        const recipient = item.direction === 'inbound' ? (item.from || '-') : (item.to || '-');
+        const status = item.status || '';
+        return '<div class="side-log-item">' +
+          '<i class="side-status ' + escapeHtml(status) + '"></i>' +
+          '<div><strong>' + escapeHtml(statusLabel(status)) + ' • ' + escapeHtml(recipient) + '</strong>' +
+          '<span title="' + escapeHtml(content) + '">' + escapeHtml(content) + '</span>' +
+          '<small>' + escapeHtml(formatDate(item.updatedAt || item.createdAt)) + '</small></div>' +
+          '</div>';
       }
 
       function phoneCard(phone) {
@@ -1106,6 +1244,16 @@ function loginPage({ config }) {
         if (authButton) {
           setAuthMode(authButton.getAttribute('data-auth-mode'));
           document.getElementById('loginCard')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+
+        const groupCopyButton = event.target.closest('[data-copy-group]');
+        if (groupCopyButton) {
+          await copyText(groupCopyButton.getAttribute('data-copy-group'));
+          groupCopyButton.textContent = 'Copied';
+          setTimeout(() => {
+            groupCopyButton.textContent = 'Copy';
+          }, 1200);
           return;
         }
 
@@ -3043,9 +3191,264 @@ function premiumSaaSStyles() {
         border-color: rgba(15, 138, 120, .34);
         box-shadow: 0 16px 38px rgba(15, 138, 120, .09);
       }
+      .customer-dashboard,
       .customer-stack,
       .admin-dashboard {
         grid-column: 1 / -1;
+      }
+      .customer-dashboard {
+        align-items: start;
+        display: grid;
+        gap: 18px;
+        grid-template-columns: 320px minmax(0, 1fr);
+      }
+      .side-panel {
+        display: grid;
+        gap: 14px;
+        position: sticky;
+        top: 92px;
+      }
+      .side-profile,
+      .side-card {
+        background: rgba(255, 255, 255, .92);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        box-shadow: 0 18px 44px rgba(15, 23, 42, .07);
+      }
+      .side-profile {
+        align-items: center;
+        background:
+          radial-gradient(circle at top right, rgba(16, 185, 129, .24), transparent 170px),
+          linear-gradient(135deg, #0f172a, #12352c);
+        color: #fff;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: auto 1fr;
+        padding: 16px;
+      }
+      .side-avatar {
+        align-items: center;
+        background: #22c55e;
+        border-radius: 16px;
+        box-shadow: 0 12px 28px rgba(34, 197, 94, .3);
+        color: #052e16;
+        display: grid;
+        font-weight: 950;
+        height: 48px;
+        place-items: center;
+        width: 48px;
+      }
+      .side-profile strong {
+        display: block;
+        font-size: 16px;
+        margin-bottom: 3px;
+      }
+      .side-profile span {
+        color: rgba(255,255,255,.72);
+        display: block;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .side-nav {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        display: grid;
+        gap: 6px;
+        padding: 8px;
+      }
+      .side-nav button {
+        background: transparent;
+        border: 0;
+        border-radius: 12px;
+        color: var(--text-muted);
+        justify-content: flex-start;
+        min-height: 38px;
+        padding: 0 12px;
+        text-align: left;
+      }
+      .side-nav button:hover {
+        background: #ecfdf5;
+        color: #047857;
+      }
+      .side-card {
+        display: grid;
+        gap: 10px;
+        overflow: hidden;
+        padding: 16px;
+      }
+      .side-card-head {
+        align-items: start;
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+      }
+      .side-label {
+        color: var(--text-muted);
+        display: block;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: .08em;
+        margin-bottom: 3px;
+        text-transform: uppercase;
+      }
+      .side-card strong {
+        color: var(--text);
+        font-size: 16px;
+      }
+      .side-card p,
+      .side-muted,
+      .side-empty {
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .side-subscription {
+        background: linear-gradient(180deg, #ffffff, #f8fbff);
+      }
+      .side-subscription.active {
+        border-color: rgba(16, 185, 129, .34);
+      }
+      .side-subscription.failed {
+        border-color: rgba(220, 38, 38, .28);
+      }
+      .side-price {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        display: flex;
+        justify-content: space-between;
+        padding: 11px 12px;
+      }
+      .side-price span {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .side-price b {
+        color: var(--text);
+        font-size: 16px;
+      }
+      .side-link {
+        align-items: center;
+        background: #0f8a78;
+        border-radius: 12px;
+        color: #fff;
+        display: inline-flex;
+        font-size: 13px;
+        font-weight: 850;
+        justify-content: center;
+        min-height: 38px;
+        text-decoration: none;
+      }
+      .mini-button {
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 850;
+        min-height: 32px;
+        padding: 0 10px;
+      }
+      .group-list,
+      .side-log-list {
+        display: grid;
+        gap: 8px;
+        max-height: 330px;
+        overflow: auto;
+        padding-right: 2px;
+      }
+      .group-item {
+        align-items: center;
+        background: #fbfdff;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 10px;
+      }
+      .group-item strong,
+      .group-item span,
+      .group-item code {
+        display: block;
+      }
+      .group-item strong {
+        font-size: 13px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .group-item code {
+        background: #eef6f3;
+        border: 1px solid #d8e8e2;
+        border-radius: 8px;
+        color: #0f766e;
+        font-family: var(--mono);
+        font-size: 11px;
+        margin: 5px 0;
+        overflow-wrap: anywhere;
+        padding: 5px 6px;
+      }
+      .group-item span {
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+      .side-log-item {
+        align-items: start;
+        background: #fbfdff;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        display: grid;
+        gap: 9px;
+        grid-template-columns: auto 1fr;
+        padding: 10px;
+      }
+      .side-status {
+        background: #94a3b8;
+        border-radius: 999px;
+        height: 9px;
+        margin-top: 5px;
+        width: 9px;
+      }
+      .side-status.sent,
+      .side-status.received {
+        background: var(--success);
+      }
+      .side-status.queued,
+      .side-status.sending {
+        background: #f59e0b;
+      }
+      .side-status.failed {
+        background: var(--danger);
+      }
+      .side-log-item strong,
+      .side-log-item span,
+      .side-log-item small {
+        display: block;
+      }
+      .side-log-item strong {
+        font-size: 12px;
+      }
+      .side-log-item span {
+        color: var(--text-muted);
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .side-log-item small {
+        color: #94a3b8;
+        font-size: 11px;
+        margin-top: 2px;
+      }
+      .side-tip code {
+        background: #eef6f3;
+        border-radius: 6px;
+        color: #0f766e;
+        font-family: var(--mono);
+        padding: 2px 5px;
       }
       .is-authenticated .public-stack,
       .is-authenticated .login-card {
@@ -3218,6 +3621,12 @@ function premiumSaaSStyles() {
         overflow-x: auto;
       }
       @media (max-width: 1023px) {
+        .customer-dashboard {
+          grid-template-columns: 1fr;
+        }
+        .side-panel {
+          position: static;
+        }
         .login-grid,
         .public-hero,
         .pricing-row {
@@ -3249,6 +3658,7 @@ function premiumSaaSStyles() {
         .detail-grid,
         .summary,
         .dash-grid,
+        .customer-dashboard,
         .admin-grid,
         .form-grid,
         .result-grid {
