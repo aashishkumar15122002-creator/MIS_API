@@ -4586,6 +4586,77 @@ function premiumSaaSStyles() {
           grid-template-columns: 1fr;
         }
       }
+      body:not(.is-authenticated) section.login-card,
+      body:not(.is-authenticated) .login-card,
+      body:not(.is-authenticated) .login-card .panel-head,
+      body:not(.is-authenticated) .login-card .panel-body,
+      body:not(.is-authenticated) .login-card form {
+        background: transparent !important;
+        color: #f7fff9 !important;
+      }
+      body:not(.is-authenticated) section.login-card {
+        background:
+          radial-gradient(circle at 15% 0%, rgba(34, 197, 94, .14), transparent 220px),
+          linear-gradient(135deg, rgba(2, 13, 8, .92), rgba(1, 8, 5, .78)) !important;
+        border-color: rgba(134, 239, 172, .22) !important;
+      }
+      body:not(.is-authenticated) .login-card h2,
+      body:not(.is-authenticated) .login-card p,
+      body:not(.is-authenticated) .login-card label,
+      body:not(.is-authenticated) .login-card .small {
+        color: rgba(247, 255, 249, .88) !important;
+        opacity: 1 !important;
+      }
+      body:not(.is-authenticated) .login-card .panel-head p,
+      body:not(.is-authenticated) .login-note {
+        color: rgba(236, 253, 245, .68) !important;
+      }
+      body:not(.is-authenticated) .login-card .auth-tabs {
+        background: rgba(255, 255, 255, .06) !important;
+        border-color: rgba(255, 255, 255, .12) !important;
+      }
+      body:not(.is-authenticated) .login-card .auth-tabs button,
+      body:not(.is-authenticated) .login-card .auth-tabs button.secondary {
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        color: rgba(236, 253, 245, .78) !important;
+      }
+      body:not(.is-authenticated) .login-card .auth-tabs button.active {
+        background: linear-gradient(135deg, #24bd76, #0da060) !important;
+        color: #ffffff !important;
+      }
+      body:not(.is-authenticated) .login-card input {
+        background: rgba(0, 0, 0, .16) !important;
+        border: 0 !important;
+        border-bottom: 1px solid rgba(236, 253, 245, .46) !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+      }
+      body:not(.is-authenticated) .login-card input::placeholder {
+        color: rgba(236, 253, 245, .36) !important;
+      }
+      body:not(.is-authenticated) .login-card input:focus {
+        border-bottom-color: #22c55e !important;
+        box-shadow: 0 10px 26px -28px rgba(34, 197, 94, .9) !important;
+      }
+      body:not(.is-authenticated) .login-card button[type="submit"] {
+        background: linear-gradient(135deg, #12ad69, #079253) !important;
+        color: #ffffff !important;
+      }
+      body:not(.is-authenticated) #dashboard,
+      body:not(.is-authenticated) #adminDashboard {
+        display: none !important;
+      }
+      .hidden,
+      #dashboard.hidden,
+      #adminDashboard.hidden,
+      #loginCard.hidden,
+      #publicDetails.hidden {
+        display: none !important;
+      }
       @media (prefers-reduced-motion: reduce) {
         *,
         *:before,
