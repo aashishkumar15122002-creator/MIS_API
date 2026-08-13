@@ -903,6 +903,7 @@ function loginPage({ config }) {
           ? me.phones.map(phoneCard).join('')
           : '<div class="empty-state"><strong>Preparing WhatsApp number</strong><span>Refresh once. Your WhatsApp card is created automatically.</span></div>';
         refreshScriptBoxes();
+        hydratePhoneCards(me.phones || []);
         document.getElementById('queueRows').innerHTML = queueRows.length
           ? queueRows.map(row).join('')
           : '<tr><td colspan="4" class="empty-row"><strong>No queued messages</strong><span>Messages waiting to be sent will appear here.</span></td></tr>';
@@ -920,10 +921,9 @@ function loginPage({ config }) {
       function phoneCard(phone) {
         const status = String(phone.status || 'created').toLowerCase();
         const connected = status === 'ready';
-        const canLink = status === 'unlinked' || status === 'disconnected' || status === 'auth_failure' || status === 'error' || status === 'created';
         const label = connected ? 'connected' : friendlyPhoneStatus(status);
         const severity = phoneSeverity(status, connected);
-        const qrAction = '<button class="phone-link" type="button" data-link-phone="' + escapeHtml(phone.id) + '">' + escapeHtml(connected ? 'QR / Reconnect' : (status === 'created' ? 'View QR' : 'Reconnect')) + '</button>';
+        const qrAction = '<button class="phone-link" type="button" data-link-phone="' + escapeHtml(phone.id) + '">' + escapeHtml(connected ? 'Show status' : 'Show QR / Reconnect') + '</button>';
         const disconnectAction = connected
           ? '<button class="danger" type="button" data-unlink-phone="' + escapeHtml(phone.id) + '">Disconnect</button>'
           : '';
@@ -1112,9 +1112,15 @@ function loginPage({ config }) {
         const linkButton = event.target.closest('[data-link-phone]');
         if (linkButton) {
           const phoneId = linkButton.getAttribute('data-link-phone');
+          const originalText = linkButton.textContent;
           linkButton.disabled = true;
-          linkButton.textContent = 'Starting...';
-          await linkPhone(phoneId);
+          linkButton.textContent = 'Opening...';
+          try {
+            await linkPhone(phoneId);
+          } finally {
+            linkButton.disabled = false;
+            linkButton.textContent = originalText;
+          }
           return;
         }
 
@@ -1158,7 +1164,7 @@ function loginPage({ config }) {
         const headers = sessionToken ? { 'x-session-token': sessionToken } : {};
         const qrPanel = document.getElementById('phoneQr-' + phoneId);
         qrPanel?.classList.add('active');
-        setPhoneQrState(phoneId, null, 'Starting session', 'Preparing WhatsApp QR. This can take a few seconds.');
+        setPhoneQrState(phoneId, null, 'Opening WhatsApp session', 'Checking current status and loading QR if needed.');
         const response = await fetch('/v1/customer/phones/' + encodeURIComponent(phoneId) + '/link', {
           method: 'POST',
           headers
@@ -1171,6 +1177,21 @@ function loginPage({ config }) {
         }
         updatePhoneStatus(phoneId, data.status, data.ready, data.qrImage);
         startPhonePoller(phoneId);
+      }
+
+      function hydratePhoneCards(phones) {
+        stopPhonePollers();
+        phones.forEach(phone => {
+          if (!phone || !phone.id) {
+            return;
+          }
+          const status = String(phone.status || 'created').toLowerCase();
+          if (status === 'ready') {
+            refreshPhoneStatus(phone.id, false);
+            return;
+          }
+          startPhonePoller(phone.id);
+        });
       }
 
       function startPhonePoller(phoneId) {
@@ -1193,7 +1214,7 @@ function loginPage({ config }) {
         }
       }
 
-      async function refreshPhoneStatus(phoneId) {
+      async function refreshPhoneStatus(phoneId, reloadOnReady = true) {
         const data = await fetchJson('/v1/customer/phones/' + encodeURIComponent(phoneId) + '/status');
         if (!data.ok) {
           stopPhonePoller(phoneId);
@@ -1202,7 +1223,9 @@ function loginPage({ config }) {
         updatePhoneStatus(phoneId, data.status, data.ready, data.qrImage, data.error);
         if (data.ready) {
           stopPhonePoller(phoneId);
-          setTimeout(loadDashboard, 600);
+          if (reloadOnReady) {
+            setTimeout(loadDashboard, 600);
+          }
         }
       }
 

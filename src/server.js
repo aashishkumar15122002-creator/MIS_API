@@ -243,7 +243,7 @@ const server = http.createServer(async (request, response) => {
         throw error(404, 'Phone not found.');
       }
 
-      await restartClient(phone);
+      getOrStartClient(phone);
       const state = getRuntimeStatus(phone.id);
       return sendJson(response, 202, {
         ok: true,

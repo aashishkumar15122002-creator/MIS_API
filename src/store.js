@@ -279,7 +279,10 @@ function ensureSingleCustomerPhone(customerId, label = 'Main WhatsApp') {
     return { phone, removed: [] };
   }
 
-  const keeper = phones.find(phone => phone.status === 'ready') || phones[0];
+  const keeper = phones.find(phone => phone.status === 'ready')
+    || phones.find(phone => phone.status === 'qr')
+    || phones.find(phone => phone.status === 'starting')
+    || phones[0];
   const removed = phones.filter(phone => phone.id !== keeper.id);
   if (removed.length) {
     const removeIds = new Set(removed.map(phone => phone.id));
