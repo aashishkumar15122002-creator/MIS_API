@@ -78,6 +78,7 @@ function homePage({ config }) {
         .contact-band .button { margin-top: 14px; width: 100%; }
       }
       ${professionalStyles()}
+      ${appLoginStyles()}
     </style>
   </head>
   <body>
@@ -502,47 +503,43 @@ function loginPage({ config }) {
       </div>
       <div class="login-grid">
         <section class="login-card" id="loginCard">
-          <div class="panel-head"><h2>Login</h2><span class="pill">Secure</span></div>
+          <div class="panel-head"><h2>Sign in</h2><span class="pill">Secure access</span></div>
           <div class="panel-body">
             <form id="loginForm">
               <label>Username<input id="username" autocomplete="username"></label>
               <label>Password<input id="password" type="password" autocomplete="current-password"></label>
-              <button id="loginBtn" type="submit">Login</button>
+              <button id="loginBtn" type="submit">Continue</button>
             </form>
             <p class="small" id="loginError"></p>
-            <div class="login-note">Customer data is shown only after a successful login. Shared computers should use Logout after checking logs.</div>
+            <div class="login-note">Admin and customer workspaces are protected. Use logout after managing shared devices.</div>
           </div>
         </section>
         <div id="publicDetails" class="public-stack">
           <section class="public-hero">
             <div>
-              <h2>WhatsApp API for teams that move fast.</h2>
-              <p>Connect a WhatsApp account with QR, send messages from your app, and monitor every queued request from one secure dashboard.</p>
+              <div class="product-kicker">Messaging operations</div>
+              <h2>WhatsApp API control panel</h2>
+              <p>Connect customer numbers, monitor QR sessions, review queued sends, and keep every API message visible from one workspace.</p>
               <div class="public-actions">
-                <button type="button" data-scroll-target="pricing">Start free trial</button>
-                <button class="secondary" type="button" data-scroll-target="api">View API</button>
+                <button type="button" data-scroll-target="api">View endpoint</button>
+                <button class="secondary" type="button" data-scroll-target="pricing">Plan details</button>
               </div>
             </div>
             <div class="hero-console" aria-label="API preview">
-              <div class="console-top"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+              <div class="console-top"><strong>POST /v1/messages/send</strong><span class="pill queued">Queued</span></div>
               <div class="console-body">
-                <div><span class="console-muted">POST</span> /v1/messages/send</div>
-                <div>{</div>
-                <div>&nbsp;&nbsp;"phoneId": "PHONE_ID",</div>
-                <div>&nbsp;&nbsp;"to": "91XXXXXXXXXX",</div>
-                <div>&nbsp;&nbsp;"message": "Hello"</div>
-                <div>}</div>
-                <br>
-                <div><span class="console-muted">status</span> queued</div>
-                <div><span class="console-muted">delivery</span> one by one</div>
+                <div><span>Phone</span><strong>QR connected</strong></div>
+                <div><span>Queue delay</span><strong>${Math.round(config.queueIntervalMs / 1000)} sec</strong></div>
+                <div><span>Message logs</span><strong>Sent / failed</strong></div>
+                <div><span>Access</span><strong>API key</strong></div>
               </div>
             </div>
           </section>
 
           <div class="detail-grid" id="features">
-            <div class="detail-card"><strong>QR connect</strong><span>Customer scans once from WhatsApp Linked Devices and can reconnect from the browser console.</span></div>
-            <div class="detail-card"><strong>Queued sending</strong><span>API requests are released one by one using the configured delay to avoid sudden bursts.</span></div>
-            <div class="detail-card"><strong>Logs</strong><span>Customers and admins can review queued, sent, and failed messages from the dashboard.</span></div>
+            <div class="detail-card"><strong>QR sessions</strong><span>Link, reconnect, and check device status without touching the API.</span></div>
+            <div class="detail-card"><strong>Message queue</strong><span>Release sends at a controlled interval instead of sending bursts.</span></div>
+            <div class="detail-card"><strong>Audit trail</strong><span>Give customers and admins a clear view of sent and failed messages.</span></div>
           </div>
 
           <section class="api-panel" id="api">
@@ -2203,6 +2200,241 @@ function professionalStyles() {
         }
         .login-grid {
           grid-template-columns: 1fr;
+        }
+      }`;
+}
+
+function appLoginStyles() {
+  return `
+      body {
+        background: #f3f6fa;
+        color: #172033;
+        font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      }
+      main {
+        max-width: 1180px;
+        padding: 20px 0 42px;
+      }
+      .portal-top {
+        background: #ffffff;
+        border: 1px solid #dbe4ee;
+        border-radius: 8px;
+        box-shadow: 0 10px 28px rgba(23, 32, 51, .06);
+        margin: 0 0 22px;
+        padding: 14px 18px;
+        position: static;
+      }
+      .portal-title h1 {
+        font-size: 24px;
+        font-weight: 800;
+      }
+      .portal-title h1:after {
+        height: 7px;
+        width: 7px;
+      }
+      .login-grid {
+        align-items: stretch;
+        display: grid;
+        gap: 18px;
+        grid-template-columns: minmax(0, 1fr) 380px;
+      }
+      .public-stack {
+        gap: 14px;
+      }
+      .public-hero {
+        align-items: start;
+        background: #ffffff;
+        border: 1px solid #dbe4ee;
+        box-shadow: 0 14px 34px rgba(23, 32, 51, .07);
+        color: #172033;
+        display: grid;
+        gap: 20px;
+        grid-template-columns: minmax(0, .95fr) minmax(300px, .75fr);
+        min-height: auto;
+        padding: 28px;
+      }
+      .product-kicker {
+        color: #0f766e;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+      }
+      .public-hero h2 {
+        color: #111827;
+        font-size: 34px;
+        font-weight: 800;
+        letter-spacing: 0;
+        line-height: 1.08;
+        margin: 0 0 12px;
+        max-width: 560px;
+      }
+      .public-hero p {
+        color: #526070;
+        font-size: 15px;
+        line-height: 1.6;
+        max-width: 600px;
+      }
+      .public-actions {
+        margin-top: 20px;
+      }
+      .public-actions button,
+      .public-actions .button {
+        min-height: 40px;
+        padding: 0 16px;
+      }
+      .hero-console {
+        align-self: stretch;
+        background: #f8fafc;
+        border: 1px solid #dbe4ee;
+        box-shadow: none;
+        color: #172033;
+      }
+      .console-top {
+        background: #ffffff;
+        border-bottom: 1px solid #dbe4ee;
+        color: #172033;
+        display: flex;
+        justify-content: space-between;
+      }
+      .console-top strong {
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .console-body {
+        color: #172033;
+        display: grid;
+        font-family: "Segoe UI", Roboto, Arial, sans-serif;
+        font-size: 14px;
+        gap: 0;
+        line-height: 1.4;
+        padding: 0;
+      }
+      .console-body div {
+        align-items: center;
+        border-bottom: 1px solid #e8edf4;
+        display: flex;
+        justify-content: space-between;
+        padding: 14px 16px;
+      }
+      .console-body div:last-child {
+        border-bottom: 0;
+      }
+      .console-body span {
+        color: #647085;
+      }
+      .console-body strong {
+        color: #172033;
+        font-size: 14px;
+      }
+      .login-card {
+        align-self: start;
+        background: #ffffff;
+        border: 1px solid #dbe4ee;
+        box-shadow: 0 14px 34px rgba(23, 32, 51, .09);
+        grid-column: 2;
+        position: sticky;
+        top: 20px;
+      }
+      .login-card .panel-head {
+        background: #ffffff;
+        border-bottom: 1px solid #dbe4ee;
+        color: #172033;
+      }
+      .login-card .panel-head h2 {
+        font-size: 18px;
+        font-weight: 800;
+      }
+      .login-card .panel-head .pill {
+        background: #e8f7f3;
+        color: #0f766e;
+      }
+      .login-card .panel-body {
+        padding: 22px 24px 24px;
+      }
+      .login-card label {
+        color: #526070;
+        font-size: 12px;
+        font-weight: 800;
+        gap: 7px;
+        letter-spacing: 0;
+        margin-bottom: 14px;
+        text-transform: uppercase;
+      }
+      .login-card input {
+        background: #ffffff;
+        border: 1px solid #cfd8e5;
+        border-radius: 8px;
+        color: #172033;
+        font-size: 15px;
+        min-height: 46px;
+      }
+      .login-card input:focus {
+        border-color: #0f766e;
+        box-shadow: 0 0 0 3px rgba(15, 118, 110, .14);
+        outline: 0;
+      }
+      .login-card button {
+        background: #0f766e;
+        color: #ffffff;
+        font-size: 15px;
+        font-weight: 800;
+        margin-top: 2px;
+        min-height: 46px;
+        width: 100%;
+      }
+      .login-note {
+        border-color: #e8edf4;
+        color: #647085;
+        font-size: 13px;
+      }
+      .detail-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .detail-card {
+        background: #ffffff;
+        border: 1px solid #dbe4ee;
+        box-shadow: 0 10px 24px rgba(23, 32, 51, .05);
+        padding: 18px;
+      }
+      .detail-card strong {
+        color: #172033;
+        font-size: 16px;
+        font-weight: 800;
+      }
+      .detail-card span,
+      .detail-card p {
+        color: #647085;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .api-panel,
+      .pricing-row {
+        display: none;
+      }
+      .customer-stack,
+      .admin-dashboard {
+        grid-column: 1 / -1;
+      }
+      .dashboard,
+      .customer-hero {
+        box-shadow: 0 12px 30px rgba(23, 32, 51, .06);
+      }
+      @media (max-width: 900px) {
+        .login-grid,
+        .public-hero,
+        .detail-grid {
+          grid-template-columns: 1fr;
+        }
+        .login-card {
+          grid-column: auto;
+          position: static;
+        }
+        .public-hero h2 {
+          font-size: 30px;
         }
       }`;
 }
