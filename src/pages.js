@@ -651,7 +651,7 @@ function loginPage({ config }) {
           <section class="customer-hero">
             <div class="panel-head">
               <div><h2>Overview</h2><p id="customerName">Monitor your WhatsApp API activity and connected sessions.</p></div>
-              <div class="actions"><span class="pill" id="customerStatus">trial</span><button id="addPhoneBtn" type="button">Add WhatsApp number</button><button class="secondary" id="customerRefreshBtn">Refresh</button></div>
+              <div class="actions"><span class="pill" id="customerStatus">trial</span><button class="secondary" id="customerRefreshBtn">Refresh</button></div>
             </div>
             <div class="panel-body">
               <div class="trial-banner" id="trialBanner"></div>
@@ -755,7 +755,6 @@ function loginPage({ config }) {
       });
       document.getElementById('showLoginBtn').addEventListener('click', () => setAuthMode('login'));
       document.getElementById('showSignupBtn').addEventListener('click', () => setAuthMode('signup'));
-      document.getElementById('addPhoneBtn').addEventListener('click', addPhone);
       document.getElementById('customerRefreshBtn').addEventListener('click', loadDashboard);
       document.getElementById('saveWebhookBtn').addEventListener('click', saveWebhook);
       document.getElementById('topLogoutBtn').addEventListener('click', logout);
@@ -889,6 +888,10 @@ function loginPage({ config }) {
         document.getElementById('customerStatus').className = 'pill ' + customerStatusClass(me.customer);
         document.getElementById('trialBanner').innerHTML = trialBanner(me.customer);
         document.getElementById('webhookUrl').value = me.customer.webhookUrl || '';
+        document.getElementById('dashboardNotice').textContent = me.removedDuplicatePhones
+          ? 'Removed ' + me.removedDuplicatePhones + ' duplicate WhatsApp phone record' + (me.removedDuplicatePhones === 1 ? '.' : 's.')
+          : '';
+        document.getElementById('dashboardNotice').className = 'dashboard-notice';
         customerApiKey = me.customer.apiKey || '';
         document.getElementById('phoneCount').textContent = me.phones.length;
         document.getElementById('queueCount').textContent = queueRows.length;
@@ -898,7 +901,7 @@ function loginPage({ config }) {
         document.getElementById('logLabel').textContent = logRows.length + ' logs';
         document.getElementById('phoneCards').innerHTML = me.phones.length
           ? me.phones.map(phoneCard).join('')
-          : '<div class="empty-state"><strong>No WhatsApp number linked</strong><span>Click Add WhatsApp number, then scan the QR from WhatsApp > Linked devices.</span><button type="button" data-add-phone>Add WhatsApp number</button></div>';
+          : '<div class="empty-state"><strong>Preparing WhatsApp number</strong><span>Refresh once. Your WhatsApp card is created automatically.</span></div>';
         refreshScriptBoxes();
         document.getElementById('queueRows').innerHTML = queueRows.length
           ? queueRows.map(row).join('')
@@ -948,36 +951,6 @@ function loginPage({ config }) {
         button.textContent = 'Save webhook';
         status.textContent = data.ok ? 'Webhook saved.' : (data.error || 'Could not save webhook.');
         status.className = 'small ' + (data.ok ? 'success-text' : 'error-text');
-      }
-
-      async function addPhone() {
-        const button = document.getElementById('addPhoneBtn');
-        const notice = document.getElementById('dashboardNotice');
-        button.disabled = true;
-        button.textContent = 'Creating...';
-        notice.textContent = 'Creating WhatsApp number...';
-        notice.className = 'dashboard-notice';
-        try {
-          const data = await fetchJsonPost('/v1/customer/phones', {
-            label: 'Main WhatsApp'
-          });
-          if (!data.ok || !data.phone?.id) {
-            throw new Error(data.error || 'Could not create WhatsApp number.');
-          }
-
-          document.getElementById('phoneCards').innerHTML = phoneCard(data.phone);
-          document.getElementById('phoneCount').textContent = '1';
-          refreshScriptBoxes();
-          notice.textContent = 'WhatsApp number created. Opening QR scanner...';
-          await linkPhone(data.phone.id);
-          document.getElementById('phoneCard-' + data.phone.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } catch (error) {
-          notice.textContent = error.message || 'Could not create WhatsApp number.';
-          notice.className = 'dashboard-notice error-text';
-        } finally {
-          button.disabled = false;
-          button.textContent = 'Add WhatsApp number';
-        }
       }
 
       async function fetchJsonPost(url, payload) {
@@ -1133,12 +1106,6 @@ function loginPage({ config }) {
         if (authButton) {
           setAuthMode(authButton.getAttribute('data-auth-mode'));
           document.getElementById('loginCard')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          return;
-        }
-
-        const addPhoneButton = event.target.closest('[data-add-phone]');
-        if (addPhoneButton) {
-          await addPhone();
           return;
         }
 

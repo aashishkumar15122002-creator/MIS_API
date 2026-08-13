@@ -20,6 +20,7 @@ const {
   createSession,
   createSignupCustomer,
   enqueueMessage,
+  ensureSingleCustomerPhone,
   findCustomerByApiKey,
   findCustomerById,
   findCustomerByLogin,
@@ -158,10 +159,13 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === 'GET' && url.pathname === '/v1/customer/me') {
       const customer = requireSessionCustomer(request);
+      const normalizedPhone = ensureSingleCustomerPhone(customer.id, 'Main WhatsApp');
+      getOrStartClient(normalizedPhone.phone);
       return sendJson(response, 200, {
         ok: true,
         customer: publicCustomer(customer),
-        phones: listPhones(customer.id)
+        phones: [findPhone(normalizedPhone.phone.id)].filter(Boolean),
+        removedDuplicatePhones: normalizedPhone.removed.length
       });
     }
 
@@ -189,24 +193,6 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, {
         ok: true,
         queue: listQueue(customer.id, url.searchParams.get('limit') || 100)
-      });
-    }
-
-    if (request.method === 'POST' && url.pathname === '/v1/customer/phones') {
-      const customer = requireSessionCustomer(request);
-      const body = await readJson(request);
-      const phone = createPhone({
-        customerId: customer.id,
-        label: body.label || 'Main WhatsApp'
-      });
-      getOrStartClient(phone);
-      const state = getRuntimeStatus(phone.id);
-      return sendJson(response, 201, {
-        ok: true,
-        phone,
-        status: state.status,
-        ready: state.ready,
-        qrImage: state.qrImage
       });
     }
 

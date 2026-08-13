@@ -257,6 +257,39 @@ function listPhones(customerId) {
   return readDb().phones.filter(phone => phone.customerId === customerId);
 }
 
+function ensureSingleCustomerPhone(customerId, label = 'Main WhatsApp') {
+  const db = readDb();
+  const phones = db.phones
+    .filter(phone => phone.customerId === customerId)
+    .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+
+  if (!phones.length) {
+    const phone = {
+      id: id('phn'),
+      customerId,
+      label,
+      status: 'created',
+      lastQrAt: null,
+      lastReadyAt: null,
+      lastDisconnectedAt: null,
+      createdAt: new Date().toISOString()
+    };
+    db.phones.push(phone);
+    writeDb(db);
+    return { phone, removed: [] };
+  }
+
+  const keeper = phones.find(phone => phone.status === 'ready') || phones[0];
+  const removed = phones.filter(phone => phone.id !== keeper.id);
+  if (removed.length) {
+    const removeIds = new Set(removed.map(phone => phone.id));
+    db.phones = db.phones.filter(phone => phone.customerId !== customerId || !removeIds.has(phone.id));
+    writeDb(db);
+  }
+
+  return { phone: keeper, removed };
+}
+
 function listCustomerSummaries() {
   const db = readDb();
   return db.customers.map(customer => {
@@ -399,6 +432,7 @@ module.exports = {
   findCustomerByLogin,
   findCustomerBySessionToken,
   findPhone,
+  ensureSingleCustomerPhone,
   isCustomerAllowed,
   listPhoneMessages,
   listPhoneQueue,
