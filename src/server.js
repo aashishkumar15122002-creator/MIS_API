@@ -18,6 +18,7 @@ const {
   createCustomer,
   createPhone,
   createSession,
+  createSignupCustomer,
   enqueueMessage,
   findCustomerByApiKey,
   findCustomerById,
@@ -106,6 +107,40 @@ const server = http.createServer(async (request, response) => {
         sessionToken: token,
         expiresAt: session.expiresAt,
         customer: publicCustomer(customer)
+      }, {
+        'set-cookie': sessionCookie('mis_customer_session', token, 30 * 24 * 60 * 60)
+      });
+    }
+
+    if (request.method === 'POST' && url.pathname === '/v1/auth/signup') {
+      const authKey = request.socket.remoteAddress || 'unknown';
+      requireLoginAllowed(authKey);
+      const body = await readJson(request);
+      const username = String(body.username || '').trim();
+      const password = String(body.password || '');
+      const name = String(body.name || body.companyName || username).trim();
+
+      const result = createSignupCustomer({
+        name,
+        trialDays: config.trialDays,
+        username,
+        password
+      });
+      const phone = createPhone({
+        customerId: result.customer.id,
+        label: body.phoneLabel || 'Main WhatsApp'
+      });
+      getOrStartClient(phone);
+
+      const { token, session } = createSession(result.customer.id);
+      clearLoginFailures(authKey);
+      return sendJson(response, 201, {
+        ok: true,
+        role: 'customer',
+        sessionToken: token,
+        expiresAt: session.expiresAt,
+        customer: publicCustomer(result.customer),
+        phone
       }, {
         'set-cookie': sessionCookie('mis_customer_session', token, 30 * 24 * 60 * 60)
       });

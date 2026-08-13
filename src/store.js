@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 
 const dataDir = path.resolve(__dirname, '..', 'data');
 const dbPath = path.join(dataDir, 'db.json');
+const signupPath = path.join(dataDir, 'userid-password.json');
 
 const initialDb = {
   customers: [],
@@ -32,6 +33,24 @@ function readDb() {
 function writeDb(db) {
   ensureDb();
   fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+}
+
+function readSignupRegistry() {
+  ensureDb();
+  if (!fs.existsSync(signupPath)) {
+    return { signups: [] };
+  }
+
+  const registry = JSON.parse(fs.readFileSync(signupPath, 'utf8'));
+  if (!Array.isArray(registry.signups)) {
+    registry.signups = [];
+  }
+  return registry;
+}
+
+function writeSignupRegistry(registry) {
+  ensureDb();
+  fs.writeFileSync(signupPath, JSON.stringify(registry, null, 2));
 }
 
 function id(prefix) {
@@ -79,6 +98,47 @@ function createCustomer({ name, trialDays, username, password }) {
   writeDb(db);
 
   return { customer, apiKey, connectToken, username: loginUsername, password: loginPassword };
+}
+
+function createSignupCustomer({ name, trialDays, username, password }) {
+  const loginUsername = normalizeUsername(username);
+  if (!loginUsername) {
+    const err = new Error('User ID is required.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (String(password || '').length < 6) {
+    const err = new Error('Password must be at least 6 characters.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const registry = readSignupRegistry();
+  if (registry.signups.some(signup => signup.username === loginUsername)) {
+    const err = new Error('This user ID has already used the free trial. Please login instead.');
+    err.statusCode = 409;
+    throw err;
+  }
+
+  const result = createCustomer({
+    name: String(name || loginUsername).trim() || loginUsername,
+    trialDays,
+    username: loginUsername,
+    password
+  });
+
+  registry.signups.unshift({
+    username: result.customer.username,
+    customerId: result.customer.id,
+    passwordSalt: result.customer.passwordSalt,
+    passwordHash: result.customer.passwordHash,
+    trialClaimedAt: result.customer.createdAt,
+    trialEndsAt: result.customer.trialEndsAt
+  });
+  writeSignupRegistry(registry);
+
+  return result;
 }
 
 function findCustomerByApiKey(apiKey) {
@@ -320,6 +380,7 @@ module.exports = {
   createCustomer,
   createPhone,
   createSession,
+  createSignupCustomer,
   enqueueMessage,
   findCustomerByApiKey,
   findCustomerById,

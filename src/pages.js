@@ -503,15 +503,25 @@ function loginPage({ config }) {
       </div>
       <div class="login-grid">
         <section class="login-card" id="loginCard">
-          <div class="panel-head"><h2>Sign in</h2><span class="pill">Secure access</span></div>
+          <div class="panel-head"><h2 id="authTitle">Sign in</h2><span class="pill">Secure access</span></div>
           <div class="panel-body">
+            <div class="auth-tabs">
+              <button class="active" id="showLoginBtn" type="button">Sign in</button>
+              <button class="secondary" id="showSignupBtn" type="button">Create account</button>
+            </div>
             <form id="loginForm">
               <label>Username<input id="username" autocomplete="username"></label>
               <label>Password<input id="password" type="password" autocomplete="current-password"></label>
               <button id="loginBtn" type="submit">Continue</button>
             </form>
+            <form class="hidden" id="signupForm">
+              <label>Company name<input id="signupName" autocomplete="organization"></label>
+              <label>User ID<input id="signupUsername" autocomplete="username"></label>
+              <label>Password<input id="signupPassword" type="password" autocomplete="new-password"></label>
+              <button id="signupBtn" type="submit">Start trial</button>
+            </form>
             <p class="small" id="loginError"></p>
-            <div class="login-note">Admin and customer workspaces are protected. Use logout after managing shared devices.</div>
+            <div class="login-note" id="authNote">Admin and customer workspaces are protected. Use logout after managing shared devices.</div>
           </div>
         </section>
         <div id="publicDetails" class="public-stack">
@@ -648,6 +658,12 @@ function loginPage({ config }) {
         event.preventDefault();
         await login();
       });
+      document.getElementById('signupForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        await signup();
+      });
+      document.getElementById('showLoginBtn').addEventListener('click', () => setAuthMode('login'));
+      document.getElementById('showSignupBtn').addEventListener('click', () => setAuthMode('signup'));
       document.getElementById('customerRefreshBtn').addEventListener('click', loadDashboard);
       document.getElementById('topLogoutBtn').addEventListener('click', logout);
       document.getElementById('adminRefreshBtn').addEventListener('click', loadAdminDashboard);
@@ -655,6 +671,19 @@ function loginPage({ config }) {
       const phonePollers = new Map();
       const apiBaseUrl = ${JSON.stringify(config.baseUrl)};
       let customerApiKey = '';
+
+      function setAuthMode(mode) {
+        const signup = mode === 'signup';
+        document.getElementById('authTitle').textContent = signup ? 'Create account' : 'Sign in';
+        document.getElementById('loginForm').classList.toggle('hidden', signup);
+        document.getElementById('signupForm').classList.toggle('hidden', !signup);
+        document.getElementById('showLoginBtn').className = signup ? 'secondary' : 'active';
+        document.getElementById('showSignupBtn').className = signup ? 'active' : 'secondary';
+        document.getElementById('authNote').textContent = signup
+          ? 'One free trial is allowed for each user ID. Existing users should sign in.'
+          : 'Admin and customer workspaces are protected. Use logout after managing shared devices.';
+        document.getElementById('loginError').textContent = '';
+      }
 
       async function login() {
         const response = await fetch('/v1/auth/login', {
@@ -674,6 +703,27 @@ function loginPage({ config }) {
           sessionStorage.setItem('mis_api_admin_session', data.adminSessionToken);
           document.getElementById('loginError').textContent = '';
           await showAdminDashboard();
+          return;
+        }
+        sessionToken = data.sessionToken;
+        document.getElementById('loginError').textContent = '';
+        showCustomerShell();
+        await loadDashboard();
+      }
+
+      async function signup() {
+        const response = await fetch('/v1/auth/signup', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('signupName').value.trim(),
+            username: document.getElementById('signupUsername').value.trim(),
+            password: document.getElementById('signupPassword').value
+          })
+        });
+        const data = await response.json();
+        if (!data.ok) {
+          document.getElementById('loginError').textContent = data.error || 'Signup failed.';
           return;
         }
         sessionToken = data.sessionToken;
@@ -2353,6 +2403,37 @@ function appLoginStyles() {
       .login-card .panel-body {
         padding: 22px 24px 24px;
       }
+      .auth-tabs {
+        background: #f3f6fa;
+        border: 1px solid #dbe4ee;
+        border-radius: 8px;
+        display: grid;
+        gap: 4px;
+        grid-template-columns: 1fr 1fr;
+        margin-bottom: 18px;
+        padding: 4px;
+      }
+      .auth-tabs button {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        color: #526070;
+        font-size: 13px;
+        font-weight: 800;
+        min-height: 36px;
+        padding: 0 10px;
+        width: 100%;
+      }
+      .auth-tabs button:hover {
+        box-shadow: none;
+        transform: none;
+      }
+      .auth-tabs button.active {
+        background: #ffffff;
+        border: 1px solid #dbe4ee;
+        box-shadow: 0 6px 16px rgba(23, 32, 51, .08);
+        color: #172033;
+      }
       .login-card label {
         color: #526070;
         font-size: 12px;
@@ -2383,6 +2464,21 @@ function appLoginStyles() {
         margin-top: 2px;
         min-height: 46px;
         width: 100%;
+      }
+      .login-card .auth-tabs button {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        color: #526070;
+        font-size: 13px;
+        margin-top: 0;
+        min-height: 36px;
+      }
+      .login-card .auth-tabs button.active {
+        background: #ffffff;
+        border: 1px solid #dbe4ee;
+        box-shadow: 0 6px 16px rgba(23, 32, 51, .08);
+        color: #172033;
       }
       .login-note {
         border-color: #e8edf4;
