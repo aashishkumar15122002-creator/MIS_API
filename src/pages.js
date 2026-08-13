@@ -759,7 +759,7 @@ function loginPage({ config }) {
           <section class="customer-hero dashboard-panel" id="overview">
             <div class="panel-head">
               <div><h2>Overview</h2><p id="customerName">Monitor your WhatsApp API activity and connected sessions.</p></div>
-              <div class="actions"><span class="pill" id="customerStatus">trial</span><button class="secondary" id="customerRefreshBtn">Refresh</button></div>
+              <div class="actions dashboard-actions"><span class="pill" id="customerStatus">trial</span><button class="secondary" id="customerRefreshBtn">Refresh</button><button class="danger" id="customerLogoutBtn" type="button">Logout</button></div>
             </div>
             <div class="panel-body">
               <div class="overview-user-card">
@@ -926,6 +926,7 @@ function loginPage({ config }) {
         button.addEventListener('click', () => togglePassword(button));
       });
       document.getElementById('customerRefreshBtn').addEventListener('click', loadDashboard);
+      document.getElementById('customerLogoutBtn').addEventListener('click', logout);
       document.getElementById('saveWebhookBtn').addEventListener('click', saveWebhook);
       document.getElementById('refreshGroupsBtn').addEventListener('click', loadGroupsPanel);
       document.getElementById('copySheetApiBtn').addEventListener('click', copySheetApiCode);
@@ -4515,6 +4516,46 @@ function premiumSaaSStyles() {
         color: var(--text-muted);
         font-size: 13px;
         margin-top: 3px;
+      }
+      .dashboard-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+        margin: 0;
+      }
+      .dashboard-actions .pill {
+        align-items: center;
+        display: inline-flex;
+        height: 42px;
+        justify-content: center;
+        line-height: 1;
+        margin: 0;
+        min-height: 42px;
+        padding: 0 16px;
+      }
+      .dashboard-actions button {
+        align-items: center;
+        display: inline-flex;
+        height: 42px;
+        justify-content: center;
+        line-height: 1;
+        margin: 0;
+        min-height: 42px;
+        padding: 0 16px;
+      }
+      .is-customer .customer-hero .panel-head,
+      .is-customer .main-card .panel-head {
+        align-items: center;
+        gap: 14px;
+        padding: 18px 18px;
+      }
+      .is-customer .customer-hero .panel-head h2,
+      .is-customer .main-card .panel-head h2,
+      .is-customer .customer-hero .panel-head p,
+      .is-customer .main-card .panel-head p {
+        margin: 0;
       }
       .is-customer .summary {
         display: grid;
